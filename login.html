@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Login</title>
   <link rel="stylesheet" href="assets/style.css" />
-  <script defer src="assets/router.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -13,7 +12,6 @@
       <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
       <nav class="nav">
         <a href="index.html">홈</a>
-        <a class="active" href="login.html">로그인</a>
       </nav>
     </div>
   </header>
@@ -22,16 +20,20 @@
     <div class="card">
       <div class="pad">
         <h1 class="h1">Login</h1>
-        <p class="p">PAT(Contents: Read and write)로 로그인하면 작성/관리 페이지로 이동해.</p>
+        <p class="p">GitHub Fine-grained PAT(Contents: Read and write)로 로그인하면 대시보드로 이동해.</p>
+
         <div class="hr"></div>
 
         <div class="row">
           <div>
             <label class="small">GitHub PAT</label>
-            <input id="tokenInput" class="input" placeholder="Paste PAT here" />
-            <p class="small" id="note"></p>
+            <input id="tokenInput" class="input" placeholder="Paste PAT here" autocomplete="off" />
+            <p class="small" style="margin-top:8px">
+              토큰은 브라우저(localStorage)에 저장돼. 공용 PC면 작업 후 로그아웃(토큰 삭제) 꼭!
+            </p>
           </div>
-          <div style="display:flex; align-items:end; gap:10px">
+
+          <div style="display:flex; align-items:end; gap:10px; flex-wrap:wrap">
             <button class="btn primary" id="loginBtn">로그인</button>
             <button class="btn" id="backBtn">홈으로</button>
           </div>
@@ -44,13 +46,18 @@
   </div>
 
   <script>
+    // dashboard.js와 반드시 동일해야 함
     const TOKEN_KEY = "gh_token_v3";
     const ME_KEY = "gh_me_v3";
+
     const log = (t)=>{ document.querySelector("#loginLog").innerHTML = t; };
 
     async function whoAmI(token){
       const res = await fetch("https://api.github.com/user", {
-        headers: { "Accept":"application/vnd.github+json", "Authorization": `Bearer ${token}` }
+        headers: {
+          "Accept":"application/vnd.github+json",
+          "Authorization": `Bearer ${token}`
+        }
       });
       if(!res.ok) throw new Error(await res.text());
       const me = await res.json();
@@ -60,6 +67,7 @@
     async function doLogin(){
       const t = (document.querySelector("#tokenInput").value || "").trim();
       if(!t) return log("<div style='color:rgba(255,107,107,.9)'>토큰을 붙여넣어줘.</div>");
+
       try{
         const me = await whoAmI(t);
         localStorage.setItem(TOKEN_KEY, t);
@@ -67,7 +75,7 @@
         log(`<div style='color:rgba(61,220,151,.9)'>OK: ${me}</div>`);
         location.href = "dashboard.html";
       }catch(e){
-        log(`<div style='color:rgba(255,107,107,.9)'>Login failed: ${String(e).slice(0,200)}</div>`);
+        log(`<div style='color:rgba(255,107,107,.9)'>Login failed: ${String(e).slice(0,240)}</div>`);
       }
     }
 
@@ -78,10 +86,7 @@
         location.href = "dashboard.html";
         return;
       }
-      const intent = window.YHRouter.getIntent();
-      document.querySelector("#note").textContent =
-        intent ? `요청 작업: ${intent.mode}${intent.category ? " / "+intent.category : ""}${intent.slug ? " / "+intent.slug : ""}` : "요청 작업 없음(기본 대시보드)";
-      log("Paste PAT and press login.");
+      log("PAT 붙여넣고 로그인 버튼을 눌러줘.");
     })();
 
     document.querySelector("#loginBtn").addEventListener("click", doLogin);
