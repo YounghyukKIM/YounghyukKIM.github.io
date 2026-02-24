@@ -50,11 +50,13 @@ function looksLikeHtml(text) {
   return t.startsWith("<!doctype") || t.startsWith("<html") || t.includes("<head") || t.includes("<body");
 }
 
-// ✅ render-time broken image fixer (show immediately)
 function fixBrokenImagesForRender(body, cat, slug) {
   const folder = `assets/uploads/${cat}/${slug}`;
-  const re = /(^|[\s])!(?!\[)([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|gif|webp))(?=\s|$|[)\],.!?])/gi;
-  return String(body || "").replace(re, (m, p1, fname) => `${p1}![](${folder}/${fname})`);
+  const re = /!(?!\[)([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|gif|webp))/gi;
+
+  return String(body || "").replace(re, (m, fname) => {
+    return `![](${folder}/${fname})`;
+  });
 }
 
 // ✅ after-render URL normalization (spaces/korean/./ etc)
