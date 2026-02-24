@@ -1,7 +1,7 @@
 // assets/post.js
 const $ = (s)=>document.querySelector(s);
 
-// 🔧 너 레포 정보 (dashboard.js랑 동일하게)
+// 🔧 repo info (dashboard.js와 동일)
 const GITHUB_OWNER  = "younghyukkim";
 const GITHUB_REPO   = "younghyukkim.github.io";
 const GITHUB_BRANCH = "main";
@@ -34,8 +34,8 @@ function safeDecode(v){
 
 function normalizePostPath(raw){
   const v = (raw || "").trim();
-  const decoded = safeDecode(v);
-  const decoded2 = safeDecode(decoded);
+  const decoded1 = safeDecode(v);
+  const decoded2 = safeDecode(decoded1);
   const p = decoded2.replace(/\\/g, "/");
 
   if(!p.startsWith("content/")) return null;
@@ -53,9 +53,11 @@ function normalizeMediaUrls(rootEl){
     if(/^data:/i.test(url)) return url;
     if(url.startsWith("/")) return url;
 
+    // "./" 제거 + 공백/한글 safe
     let u = url.replace(/^\.\//, "");
     u = encodeURI(u);
 
+    // post.html 기준 상대경로로 안전하게
     const base = new URL(location.href);
     base.pathname = base.pathname.replace(/\/[^/]*$/, "/");
     return new URL(u, base).toString();
@@ -73,17 +75,28 @@ function normalizeMediaUrls(rootEl){
   });
 }
 
-// ✅ 1차: 사이트에서 직접 읽기
-async function fetchFromSite(path){
-  const res = await fetch(path, { cache: "no-store" });
-  if(!res.ok) throw new Error(`site fetch failed (HTTP ${res.status})`);
-  return res.text();
+function looksLikeHtml(text){
+  const t = (text || "").trim().slice(0, 200).toLowerCase();
+  return t.startsWith("<!doctype") || t.startsWith("<html") || t.includes("<head") || t.includes("<body");
 }
 
-// ✅ 2차: raw.githubusercontent.com에서 읽기 (Pages 설정과 무관하게 레포에서 직접 읽음)
+// ✅ 1차: 사이트에서 가져오기 (근데 md가 아니라 HTML이 올 수도 있음)
+async function fetchFromSite(path){
+  const res = await fetch(path, { cache:"no-store" });
+  if(!res.ok) throw new Error(`site fetch failed (HTTP ${res.status})`);
+  const txt = await res.text();
+
+  // ✅ 핵심: 200이어도 HTML이면 md 원본이 아님 → 실패 처리해서 raw로 넘어감
+  if(looksLikeHtml(txt)){
+    throw new Error("site returned HTML (not raw markdown)");
+  }
+  return txt;
+}
+
+// ✅ 2차: raw.githubusercontent.com에서 가져오기 (항상 md 원본)
 async function fetchFromRawGitHub(path){
   const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${path}`;
-  const res = await fetch(rawUrl, { cache: "no-store" });
+  const res = await fetch(rawUrl, { cache:"no-store" });
   if(!res.ok) throw new Error(`raw fetch failed (HTTP ${res.status})`);
   return res.text();
 }
@@ -112,17 +125,18 @@ async function main(){
 
   try{
     md = await fetchFromSite(path);
-    sourceNote = ""; // 정상
+    sourceNote = ""; // site에서 raw md를 주는 경우
   }catch(e1){
-    // ✅ 사이트에서 404면 raw로 fallback
+    // ✅ site가 HTML을 주거나 실패하면 raw로 fallback
     try{
       md = await fetchFromRawGitHub(path);
-      sourceNote = " (raw fallback)";
+      sourceNote = " (raw)";
     }catch(e2){
       $("#postTitle").textContent = "불러오기 실패";
       $("#postBody").textContent =
-        `파일을 못 불러왔어:\n- site: ${path}\n- raw: ${e2.message}\n\n` +
-        `※ 레포 브랜치(${GITHUB_BRANCH})에 파일이 있는지, Pages 배포 브랜치/폴더가 다른지 확인해줘.`;
+        `site 경로는 열리지만(md 원본이 아니라 HTML이 반환될 수 있음) 글 원본을 못 가져왔어.\n\n` +
+        `- path: ${path}\n- site: ${String(e1.message || e1)}\n- raw: ${String(e2.message || e2)}\n\n` +
+        `※ 브랜치(${GITHUB_BRANCH})에 파일이 있는지 확인해줘.`;
       return;
     }
   }
@@ -143,7 +157,7 @@ async function main(){
   const html = window.mdToHtml ? window.mdToHtml(body) : body;
   $("#postBody").innerHTML = html;
 
-  // ✅ 이미지/링크 보정 (assets/uploads/... 포함)
+  // ✅ 이미지/링크 경로 보정 (assets/uploads/... 안정)
   normalizeMediaUrls($("#postBody"));
 }
 
