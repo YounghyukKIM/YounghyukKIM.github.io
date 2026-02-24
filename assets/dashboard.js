@@ -174,14 +174,35 @@ function updatePreview(){
 
 // ===== github contents helpers =====
 async function getFileSha(path){
+  // 1) ref=브랜치로 시도
   try{
     const data = await ghFetch(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
     );
-    return data.sha;
-  }catch{
-    return null;
-  }
+    if (data?.sha) return data.sha;
+  }catch{}
+
+  // 2) ref 없이 시도 (기본 브랜치로 조회)
+  try{
+    const data = await ghFetch(
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`
+    );
+    if (data?.sha) return data.sha;
+  }catch{}
+
+  // 3) repo 기본 브랜치 자동 감지 후 그걸로 다시 시도
+  try{
+    const repo = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}`);
+    const def = repo?.default_branch;
+    if(def){
+      const data = await ghFetch(
+        `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(def)}`
+      );
+      if (data?.sha) return data.sha;
+    }
+  }catch{}
+
+  return null;
 }
 
 async function putFile(path, content, message){
@@ -204,8 +225,20 @@ async function putFile(path, content, message){
 
 async function deleteFile(path, message){
   const sha = await getFileSha(path);
-  if(!sha) throw new Error("파일이 존재하지 않음");
+
+  if(!sha){
+    // 진짜 없는지 한 번 더 확인용 메시지(디버깅 도움)
+    try{
+      await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`);
+      throw new Error(`파일은 보이는데 sha를 못 가져왔어. 브랜치/권한 문제 가능성: ${path}`);
+    }catch(e){
+      // 여기서도 404면 진짜 없음
+      throw new Error(`삭제 실패: sha를 못 가져왔어(경로/브랜치 확인): ${path}`);
+    }
+  }
+
   const body = { message, branch: GITHUB_BRANCH, sha };
+
   return ghFetch(
     `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`,
     {
