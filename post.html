@@ -6,7 +6,7 @@
   <title>Post</title>
   <link rel="stylesheet" href="assets/style.css" />
   <script defer src="assets/markdown.js"></script>
-  <script defer src="assets/app.js"></script>
+  <script defer src="assets/post.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -25,21 +25,21 @@
   <div class="container">
     <div class="card">
       <div class="pad">
-        <div class="meta" id="postMeta"></div>
-        <h1 class="h1" id="postTitle">Loading...</h1>
-        <p class="p" id="postDesc"></p>
+        <a class="small" id="backLink" href="index.html">← Back</a>
+        <h1 class="h1" id="postTitle" style="margin-bottom:6px">Loading...</h1>
+        <div class="small" id="postMeta"></div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:14px">
+    <div class="card">
       <div class="pad">
-        <article class="preview" id="postBody"></article>
+        <div id="postBody" class="p"></div>
       </div>
     </div>
 
-    <footer class="footer">
-      <a href="admin.html">관리자</a>
-    </footer>
+    <footer class="footer">© <span id="year"></span> YoungHyuk</footer>
   </div>
+
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
 </body>
 </html>
