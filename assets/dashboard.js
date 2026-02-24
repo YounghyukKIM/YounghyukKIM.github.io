@@ -6,7 +6,7 @@ function encPath(p){
   return String(p || "").split("/").map(encodeURIComponent).join("/");
 }
 
-// === repo config ===
+// === repo config (너 레포로 맞춰둠) ===
 const GITHUB_OWNER = "younghyukkim";
 const GITHUB_REPO  = "younghyukkim.github.io";
 const GITHUB_BRANCH = "main";
@@ -57,7 +57,6 @@ async function ghFetchRaw(path, opts={}){
 
 // ===== markdown helpers =====
 function parseFrontMatter(md){
-  // very small frontmatter parser: expects starting ---
   if(!md.startsWith("---")) return { meta:{}, body: md };
   const end = md.indexOf("\n---", 3);
   if(end < 0) return { meta:{}, body: md };
@@ -120,7 +119,7 @@ function showStatus(msg, ok=true){
   const st = $("#status");
   if(!st) return;
   st.textContent = msg;
-  st.style.color = ok ? "#1b5e20" : "#b71c1c";
+  st.style.color = ok ? "" : "crimson";
 }
 
 // ===== drafts (localStorage) =====
@@ -182,7 +181,12 @@ async function getFileSha(path){
 
 async function putFile(path, content, message){
   const sha = await getFileSha(path);
-  const body = { message, branch: GITHUB_BRANCH, content: btoa(unescape(encodeURIComponent(content))), ...(sha?{sha}: {}) };
+  const body = {
+    message,
+    branch: GITHUB_BRANCH,
+    content: btoa(unescape(encodeURIComponent(content))),
+    ...(sha?{sha}: {})
+  };
   return ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`, {
     method:"PUT",
     headers: {"Content-Type":"application/json"},
@@ -201,13 +205,53 @@ async function deleteFile(path, message){
   });
 }
 
+// ===== posts.json rebuild (index/reviews 목록용) =====
+async function listDir(path){
+  try{
+    const arr = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`);
+    return (arr||[]).filter(x=>x.type==="file" && x.name.endsWith(".md"));
+  }catch{
+    return [];
+  }
+}
+
+async function readMetaFromMd(path){
+  const txt = await ghFetchRaw(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`);
+  const {meta} = parseFrontMatter(txt);
+  return meta || {};
+}
+
+async function rebuildPostsJson(){
+  const cats = ["reviews","papers","notes","etc"];
+  const posts = [];
+
+  for(const c of cats){
+    const files = await listDir(`content/${c}`);
+    for(const f of files){
+      const path = `content/${c}/${f.name}`;
+      let meta = {};
+      try{ meta = await readMetaFromMd(path); }catch{}
+      posts.push({
+        title: meta.title || f.name.replace(/\.md$/,""),
+        date: meta.date || "",
+        category: c,
+        tags: meta.tags || "",
+        path
+      });
+    }
+  }
+
+  posts.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+  const json = JSON.stringify(posts, null, 2);
+  await putFile("content/posts.json", json, "dashboard: rebuild posts index");
+}
+
 // ===== UI: list posts =====
 async function loadPostsIndex(){
   const list = $("#postsList");
   if(!list) return;
   list.innerHTML = `<option value="">(불러오는 중...)</option>`;
 
-  // categories known
   const cats = ["reviews", "papers", "notes", "etc"];
   const items = [];
 
@@ -223,7 +267,7 @@ async function loadPostsIndex(){
         }
       });
     }catch(e){
-      // ignore if folder doesn't exist
+      // folder 없으면 스킵
     }
   }
 
@@ -233,13 +277,16 @@ async function loadPostsIndex(){
   }
 
   items.sort((a,b)=>a.label.localeCompare(b.label));
-  list.innerHTML = `<option value="">(선택)</option>` + items.map(it=>`<option value="${it.path}">${it.label}</option>`).join("");
+  list.innerHTML =
+    `<option value="">(선택)</option>` +
+    items.map(it=>`<option value="${it.path}">${it.label}</option>`).join("");
 }
 
 async function openPost(path){
   const txt = await ghFetchRaw(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`);
 
-  const {meta, body} = parseFrontMatter(txt);
+  const {meta} = parseFrontMatter(txt);
+
   // infer category/slug from path
   const m = path.match(/^content\/([^/]+)\/(.+)\.md$/);
   const cat = m ? m[1] : (meta.category || "reviews");
@@ -259,7 +306,7 @@ async function openPost(path){
   showStatus(`열기 완료: ${path}`);
 }
 
-// ===== publish =====
+// ===== publish / delete =====
 async function publish(){
   const cat = $("#category")?.value || "reviews";
   const slug = slugify($("#slug")?.value || "");
@@ -268,23 +315,25 @@ async function publish(){
     return;
   }
 
-  // Build markdown with updated frontmatter/body
-  const bodyOnly = ($("#md")?.value || "");
-  const parsed = parseFrontMatter(bodyOnly);
+  const mdAll = ($("#md")?.value || "");
+  const parsed = parseFrontMatter(mdAll);
+
   const meta = {
     title: $("#title")?.value || "",
     date: ($("#date")?.value || "") || new Date().toISOString().slice(0,10),
     category: cat,
     tags: $("#tags")?.value || "",
   };
-  const md = buildPostMarkdown(meta, parsed.body);
 
+  const md = buildPostMarkdown(meta, parsed.body);
   const path = currentPath();
+
   showStatus("발행 중...");
 
   try{
     await putFile(path, md, `dashboard: publish ${path}`);
-    showStatus(`발행 완료 ✅  (${path})`);
+    await rebuildPostsJson();          // ✅ 목록 자동 갱신
+    showStatus(`발행 완료 ✅ (${path})`);
     await loadPostsIndex();
   }catch(e){
     showStatus(`발행 실패: ${e.message}`, false);
@@ -298,9 +347,11 @@ async function removeSelected(){
     showStatus("삭제할 파일을 선택해줘!", false);
     return;
   }
+
   showStatus("삭제 중...");
   try{
     await deleteFile(path, `dashboard: delete ${path}`);
+    await rebuildPostsJson();          // ✅ 목록 자동 갱신
     showStatus(`삭제 완료 🗑️ (${path})`);
     await loadPostsIndex();
   }catch(e){
@@ -310,20 +361,19 @@ async function removeSelected(){
 
 // ===== init =====
 document.addEventListener("DOMContentLoaded", async ()=>{
-  // auth check
   if(!getToken()){
     location.href = "login.html";
     return;
   }
 
-  // header info
   const who = $("#whoami");
   if(who) who.textContent = `Logged in as ${getMe() || "(unknown)"}`;
-  const note = $("#dashNote");
-  if(note) note.textContent = "※ 홈에서는 이 페이지를 노출하지 않음(직접 URL 접근).";
 
-  // logout (supports either #logoutBtn or legacy #logoutLink)
-  const logoutBtn = $("#logoutBtn") || $("#logoutLink");
+  const note = $("#dashNote");
+  if(note) note.textContent = "※ 대시보드는 직접 URL 접근용";
+
+  // logout
+  const logoutBtn = $("#logoutBtn");
   if (logoutBtn){
     logoutBtn.addEventListener("click", (e)=>{
       e.preventDefault?.();
@@ -351,7 +401,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     });
   }
 
-  // init default fields
+  // init
   if($("#date") && !$("#date").value){
     $("#date").value = new Date().toISOString().slice(0,10);
   }
