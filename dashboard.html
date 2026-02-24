@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <script defer src="assets/markdown.js"></script>
+  <script defer src="assets/router.js"></script>
+  <script defer src="assets/dashboard.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
+      <nav class="nav">
+        <a href="index.html">홈</a>
+        <a href="login.html">로그인</a>
+        <a class="active" href="dashboard.html">대시보드</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="pad">
+        <h1 class="h1">Dashboard</h1>
+        <p class="p">작성/관리 페이지. (로그인 필수)</p>
+        <div class="hr"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+          <span class="small" id="whoami"></span>
+          <button class="btn" id="logoutBtn">로그아웃</button>
+        </div>
+        <p class="small" id="dashNote"></p>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <!-- WRITE -->
+      <div class="card col-8">
+        <div class="pad">
+          <div class="section-title">작성</div>
+
+          <div class="row">
+            <div>
+              <label class="small">카테고리</label>
+              <select id="category" class="input">
+                <option value="reviews">논문 리뷰</option>
+                <option value="implementations">논문 구현</option>
+                <option value="projects">프로젝트</option>
+              </select>
+            </div>
+            <div>
+              <label class="small">Slug</label>
+              <input id="slug" class="input" placeholder="e.g. test-post" />
+              <div class="small">저장 경로: <span id="pathHint" style="font-family:var(--mono)"></span></div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <div>
+              <label class="small">제목</label>
+              <input id="title" class="input" placeholder="제목" />
+            </div>
+            <div>
+              <label class="small">설명</label>
+              <input id="desc" class="input" placeholder="한 줄 요약" />
+            </div>
+          </div>
+
+          <div class="split" style="margin-top:10px">
+            <div>
+              <label class="small">Markdown</label>
+              <textarea id="md" placeholder="# 내용..."></textarea>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px">
+                <button class="btn" id="saveDraftBtn">임시저장</button>
+                <button class="btn ok" id="publishBtn">발행(커밋)</button>
+              </div>
+            </div>
+            <div>
+              <label class="small">미리보기</label>
+              <div class="preview" id="preview"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANAGE -->
+      <div class="card col-4">
+        <div class="pad">
+          <div class="section-title">관리</div>
+          <div class="row">
+            <div>
+              <label class="small">카테고리</label>
+              <select id="manageCategory" class="input">
+                <option value="reviews">논문 리뷰</option>
+                <option value="implementations">논문 구현</option>
+                <option value="projects">프로젝트</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:end">
+              <button class="btn" id="refreshBtn">목록 새로고침</button>
+            </div>
+          </div>
+          <div class="hr"></div>
+          <div id="manageList" class="list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
