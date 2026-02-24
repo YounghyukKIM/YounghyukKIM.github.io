@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Post</title>
+  <title>Post | YoungHyuk</title>
   <link rel="stylesheet" href="assets/style.css" />
+
   <script defer src="assets/markdown.js"></script>
   <script defer src="assets/post.js"></script>
 </head>
@@ -13,11 +14,11 @@
     <div class="inner">
       <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
       <nav class="nav" id="nav">
-        <a href="index.html" data-nav="home">홈</a>
-        <a href="reviews.html" data-nav="reviews">논문 리뷰</a>
-        <a href="implementations.html" data-nav="impl">논문 구현</a>
-        <a href="projects.html" data-nav="projects">프로젝트</a>
-        <a href="contacts.html" data-nav="contacts">연락처</a>
+        <a href="index.html">홈</a>
+        <a href="reviews.html">논문 리뷰</a>
+        <a href="implementations.html">논문 구현</a>
+        <a href="projects.html">프로젝트</a>
+        <a href="contacts.html">연락처</a>
       </nav>
     </div>
   </header>
@@ -25,8 +26,8 @@
   <div class="container">
     <div class="card">
       <div class="pad">
-        <a class="small" id="backLink" href="index.html">← Back</a>
-        <h1 class="h1" id="postTitle" style="margin-bottom:6px">Loading...</h1>
+        <a id="backLink" class="small" href="index.html">← Back</a>
+        <h1 class="h1" id="postTitle" style="margin:10px 0 6px">Loading...</h1>
         <div class="small" id="postMeta"></div>
       </div>
     </div>
@@ -40,6 +41,8 @@
     <footer class="footer">© <span id="year"></span> YoungHyuk</footer>
   </div>
 
-  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
