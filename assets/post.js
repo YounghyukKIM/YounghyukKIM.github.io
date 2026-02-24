@@ -38,7 +38,6 @@ function normalizePostPath(raw) {
   const decoded2 = safeDecode(decoded1);
   const p = decoded2.replace(/\\/g, "/");
 
-  // allow only content/*.md for safety
   if (!p.startsWith("content/")) return null;
   if (p.includes("..")) return null;
   if (!p.endsWith(".md")) return null;
@@ -50,16 +49,23 @@ function looksLikeHtml(text) {
   return t.startsWith("<!doctype") || t.startsWith("<html") || t.includes("<head") || t.includes("<body");
 }
 
+/**
+ * ✅ 핵심: "!image-...jpeg" 같은 깨진 토큰을 "![image](...)"로 변환
+ * - 너 markdown.js가 "![](...)"(빈 alt)를 이미지로 못 읽는 케이스라서 alt를 항상 넣어줌
+ * - 이미 정상 문법 "![alt](...)"는 건드리지 않음
+ */
 function fixBrokenImagesForRender(body, cat, slug) {
   const folder = `assets/uploads/${cat}/${slug}`;
+
+  // !filename.ext  (but not ![alt](...))
   const re = /!(?!\[)([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|gif|webp))/gi;
 
   return String(body || "").replace(re, (m, fname) => {
-    return `![](${folder}/${fname})`;
+    // ✅ alt를 반드시 넣는다 (빈 alt 금지)
+    return `![image](${folder}/${fname})`;
   });
 }
 
-// ✅ after-render URL normalization (spaces/korean/./ etc)
 function normalizeMediaUrls(rootEl) {
   if (!rootEl) return;
 
@@ -94,9 +100,8 @@ async function fetchFromSite(path) {
   if (!res.ok) throw new Error(`site fetch failed (HTTP ${res.status})`);
   const txt = await res.text();
 
-  // 핵심: 200이어도 HTML이면 md 원본이 아님 → raw로 fallback
+  // 200이어도 HTML이면 md 원본이 아님 → raw로 fallback
   if (looksLikeHtml(txt)) throw new Error("site returned HTML (not raw markdown)");
-
   return txt;
 }
 
@@ -121,7 +126,6 @@ async function main() {
   const cat = mm ? mm[1] : "";
   const slug = mm ? mm[2] : "";
 
-  // back link
   $("#backLink").href =
     (cat === "reviews") ? "reviews.html" :
     (cat === "papers") ? "papers.html" :
@@ -140,8 +144,7 @@ async function main() {
     } catch (e2) {
       $("#postTitle").textContent = "불러오기 실패";
       $("#postBody").textContent =
-        `파일을 못 불러왔어.\n\n- path: ${path}\n- site: ${String(e1.message || e1)}\n- raw: ${String(e2.message || e2)}\n\n` +
-        `※ 브랜치(${GITHUB_BRANCH})에 파일이 있는지 확인해줘.`;
+        `파일을 못 불러왔어.\n\n- path: ${path}\n- site: ${String(e1.message || e1)}\n- raw: ${String(e2.message || e2)}\n`;
       return;
     }
   }
@@ -159,13 +162,12 @@ async function main() {
     [date && `📅 ${date}`, cat && `📁 ${cat}`, tags && `🏷 ${tags}`]
       .filter(Boolean).join("  ·  ");
 
-  // ✅ show images immediately even if md is broken
+  // ✅ 여기서 깨진 이미지 토큰을 정상 이미지 문법으로 바꾼 다음 렌더링
   const fixedBody = fixBrokenImagesForRender(body, cat, slug);
 
   const html = window.mdToHtml ? window.mdToHtml(fixedBody) : fixedBody;
   $("#postBody").innerHTML = html;
 
-  // ✅ normalize img/link urls (uploads, spaces, ./)
   normalizeMediaUrls($("#postBody"));
 }
 
