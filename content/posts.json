@@ -1,5 +1,12 @@
 [
   {
+    "title": "Last testing",
+    "date": "2026-02-24",
+    "category": "reviews",
+    "tags": "ai",
+    "path": "content/reviews/last-testing.md"
+  },
+  {
     "title": "테스트",
     "date": "2026-02-24",
     "category": "reviews",
