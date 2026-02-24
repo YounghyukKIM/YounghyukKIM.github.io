@@ -5,73 +5,93 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>YoungHyuk</title>
   <link rel="stylesheet" href="assets/style.css" />
-  <script defer src="assets/router.js"></script>
+  <!-- 홈에서는 router.js 필요 없음 -->
+  <script defer src="assets/app.js"></script>
 </head>
 <body>
   <header class="topbar">
     <div class="inner">
       <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
-      <nav class="nav">
-        <a class="active" href="index.html">홈</a>
-        <a href="reviews.html">논문 리뷰</a>
-        <a href="implementations.html">논문 구현</a>
-        <a href="projects.html">프로젝트</a>
-        <a href="contacts.html">연락처</a>
+      <nav class="nav" id="nav">
+        <a class="active" href="index.html" data-nav="home">홈</a>
+        <a href="reviews.html" data-nav="reviews">논문 리뷰</a>
+        <a href="implementations.html" data-nav="impl">논문 구현</a>
+        <a href="projects.html" data-nav="projects">프로젝트</a>
+        <a href="contacts.html" data-nav="contacts">연락처</a>
       </nav>
     </div>
   </header>
 
   <div class="container">
-    <div class="card">
-      <div class="pad">
-        <h1 class="h1">Command Home</h1>
-        <p class="p">관리/작성은 커맨드로 진입해. (로그인 필요)</p>
-
-        <div class="hr"></div>
-
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-          <input id="homeCmd" class="input" placeholder="예: help / admin / write reviews / manage projects / open reviews test-post" style="flex:1; min-width:280px"/>
-          <button class="btn primary" id="goBtn">Go</button>
+    <section class="hero">
+      <div class="card">
+        <div class="pad">
+          <h1 class="h1">Lab Notes & Projects</h1>
+          <p class="p">논문 리뷰, 구현 기록, 프로젝트 진행 상황을 정리하는 공간.</p>
+          <div class="hr"></div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <a class="btn primary" href="reviews.html">논문 리뷰</a>
+            <a class="btn" href="implementations.html">논문 구현</a>
+            <a class="btn" href="projects.html">프로젝트</a>
+          </div>
+          <p class="small" style="margin-top:10px">※ 로그인/관리 페이지는 홈에서 노출하지 않음(직접 URL 접근만).</p>
         </div>
-
-        <div class="hr"></div>
-        <div id="homeLog" class="preview" style="font-family:var(--mono); font-size:12px"></div>
       </div>
-    </div>
+
+      <div class="card">
+        <div class="pad">
+          <div class="section-title">Quick</div>
+          <div class="list">
+            <a class="item" href="reviews.html">
+              <div style="flex:1">
+                <div style="font-weight:800">논문 리뷰</div>
+                <div class="meta"><span class="badge">요약/코멘트</span></div>
+              </div>
+            </a>
+            <a class="item" href="implementations.html">
+              <div style="flex:1">
+                <div style="font-weight:800">논문 구현</div>
+                <div class="meta"><span class="badge">코드/실험</span></div>
+              </div>
+            </a>
+            <a class="item" href="projects.html">
+              <div style="flex:1">
+                <div style="font-weight:800">프로젝트</div>
+                <div class="meta"><span class="badge">진행/완료</span></div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card col-8">
+        <div class="pad">
+          <div class="section-title">최근 글</div>
+          <div id="recentList" class="list"></div>
+          <p class="small">content/posts.json 기반으로 최근 글을 보여줘.</p>
+        </div>
+      </div>
+
+      <div class="card col-4">
+        <div class="pad">
+          <div class="section-title">About</div>
+          <p class="p" style="margin:0">
+            Research notes, implementation logs, and projects.
+          </p>
+          <div class="hr"></div>
+          <div class="small">
+            - Category: reviews / implementations / projects<br/>
+            - Markdown posts under <span style="font-family:var(--mono)">content/</span>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <footer class="footer">
-      <span class="kbd">help</span> / <span class="kbd">admin</span> / <span class="kbd">write reviews</span> / <span class="kbd">manage implementations</span>
+      © <span id="year"></span> YoungHyuk
     </footer>
   </div>
-
-  <script>
-    const log = (t)=>{ document.querySelector("#homeLog").innerHTML = t; };
-    const help =
-`Commands:
-- help
-- admin
-- write <reviews|implementations|projects>
-- manage <reviews|implementations|projects>
-- open <category> <slug>`;
-
-    function run(){
-      const v = document.querySelector("#homeCmd").value || "";
-      try{
-        const intent = window.YHRouter.parseHomeCommand(v);
-        if(intent.target === "help"){
-          log("<pre><code>"+help.replaceAll("<","&lt;").replaceAll(">","&gt;")+"</code></pre>");
-          return;
-        }
-        window.YHRouter.setIntent(intent);
-        // 로그인 여부는 login.html에서 판단
-        location.href = "login.html";
-      }catch(e){
-        log(`<div style="color:rgba(255,107,107,.9)">${e.message}</div>`);
-      }
-    }
-    document.querySelector("#goBtn").addEventListener("click", run);
-    document.querySelector("#homeCmd").addEventListener("keydown", (e)=>{ if(e.key==="Enter") run(); });
-    log("type: <b>help</b>");
-  </script>
 </body>
 </html>
