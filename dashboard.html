@@ -5,142 +5,78 @@
   <title>Dashboard | YoungHyuk Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="assets/style.css" />
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background:#f7f7f7; }
-    header {
-      background:#111;
-      color:white;
-      padding:14px 20px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    header button {
-      background:#e53935;
-      border:none;
-      color:white;
-      padding:8px 14px;
-      cursor:pointer;
-      border-radius:4px;
-    }
-    main {
-      display:flex;
-      gap:20px;
-      padding:20px;
-    }
-    .left, .right {
-      background:white;
-      padding:20px;
-      border-radius:8px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.1);
-    }
-    .left { flex:1; }
-    .right { flex:1; }
-    input, select, textarea {
-      width:100%;
-      padding:8px;
-      margin:6px 0 12px 0;
-      border:1px solid #ccc;
-      border-radius:4px;
-    }
-    textarea {
-      height:300px;
-      font-family:monospace;
-    }
-    button.action {
-      padding:8px 14px;
-      margin-right:6px;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
-    }
-    #btnSaveDraft { background:#607d8b; color:white; }
-    #btnLoadDraft { background:#9e9e9e; color:white; }
-    #btnPublish { background:#2e7d32; color:white; }
-    #btnDelete { background:#c62828; color:white; }
-    #status {
-      margin-top:10px;
-      font-weight:bold;
-    }
-    #preview {
-      background:#fafafa;
-      padding:15px;
-      border-radius:6px;
-      border:1px solid #ddd;
-      min-height:200px;
-    }
-    .small-note {
-      font-size:13px;
-      color:#777;
-    }
-  </style>
 </head>
 <body>
 
-<header>
-  <div>
-    <strong>Dashboard</strong>
-    <span id="whoami" style="margin-left:10px;font-size:13px;"></span>
-  </div>
-  <button id="logoutBtn">로그아웃</button>
-</header>
-
-<main>
-  <!-- LEFT: EDITOR -->
-  <div class="left">
-    <h2>✍ 글 작성</h2>
-
-    <label>Title</label>
-    <input type="text" id="title" placeholder="글 제목" />
-
-    <label>Date</label>
-    <input type="date" id="date" />
-
-    <label>Category</label>
-    <select id="category">
-      <option value="reviews">reviews</option>
-      <option value="papers">papers</option>
-      <option value="notes">notes</option>
-      <option value="etc">etc</option>
-    </select>
-
-    <label>Slug (파일 이름)</label>
-    <input type="text" id="slug" placeholder="my-post-title" />
-
-    <div class="small-note">
-      저장 경로: <span id="pathHint"></span>
+  <header class="dash-header">
+    <div class="dash-header__left">
+      <strong class="dash-title">Dashboard</strong>
+      <span id="whoami" class="dash-whoami"></span>
+      <span id="dashNote" class="dash-note"></span>
     </div>
 
-    <label>Tags (쉼표 구분)</label>
-    <input type="text" id="tags" placeholder="AI, Vision, RL" />
+    <!-- ✅ JS와 id 통일 -->
+    <button id="logoutBtn" class="btn btn-danger">로그아웃</button>
+  </header>
 
-    <label>Markdown</label>
-    <textarea id="md" placeholder="Markdown 내용을 입력하세요..."></textarea>
+  <main class="dash-main">
+    <!-- LEFT: EDITOR -->
+    <section class="dash-panel dash-panel--editor">
+      <h2 class="dash-h2">✍ 글 작성</h2>
 
-    <div>
-      <button class="action" id="btnSaveDraft">임시저장</button>
-      <button class="action" id="btnLoadDraft">불러오기</button>
-      <button class="action" id="btnPublish">발행(Commit)</button>
-      <button class="action" id="btnDelete">삭제</button>
-    </div>
+      <label for="title">Title</label>
+      <input type="text" id="title" placeholder="글 제목" />
 
-    <div id="status"></div>
-  </div>
+      <label for="date">Date</label>
+      <input type="date" id="date" />
 
-  <!-- RIGHT: PREVIEW & POSTS -->
-  <div class="right">
-    <h2>👀 미리보기</h2>
-    <div id="preview"></div>
+      <label for="category">Category</label>
+      <select id="category">
+        <option value="reviews">reviews</option>
+        <option value="papers">papers</option>
+        <option value="notes">notes</option>
+        <option value="etc">etc</option>
+      </select>
 
-    <hr style="margin:30px 0;">
+      <label for="slug">Slug (파일 이름)</label>
+      <input type="text" id="slug" placeholder="my-post-title" />
 
-    <h2>📂 게시글 목록</h2>
-    <select id="postsList" size="10" style="height:200px;"></select>
-  </div>
-</main>
+      <div class="dash-small-note">
+        저장 경로: <span id="pathHint"></span>
+      </div>
 
-<script src="assets/markdown.js"></script>
-<script src="assets/dashboard.js"></script>
+      <label for="tags">Tags (쉼표 구분)</label>
+      <input type="text" id="tags" placeholder="AI, Vision, RL" />
+
+      <label for="md">Markdown</label>
+      <textarea id="md" placeholder="Markdown 내용을 입력하세요..."></textarea>
+
+      <div class="dash-actions">
+        <button id="btnSaveDraft" class="btn">임시저장</button>
+        <button id="btnLoadDraft" class="btn">불러오기</button>
+        <button id="btnPublish" class="btn btn-primary">발행(Commit)</button>
+        <button id="btnDelete" class="btn btn-danger">삭제</button>
+      </div>
+
+      <div id="status" class="dash-status"></div>
+    </section>
+
+    <!-- RIGHT: PREVIEW & POSTS -->
+    <section class="dash-panel dash-panel--preview">
+      <h2 class="dash-h2">👀 미리보기</h2>
+      <div id="preview" class="dash-preview"></div>
+
+      <hr class="dash-hr" />
+
+      <h2 class="dash-h2">📂 게시글 목록</h2>
+      <select id="postsList" class="dash-posts-list" size="10"></select>
+    </section>
+  </main>
+
+  <!-- markdown renderer -->
+  <script src="assets/markdown.js"></script>
+  <!-- ✅ 수정된 JS -->
+  <script src="assets/dashboard.js"></script>
 
 </body>
 </html>
