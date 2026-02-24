@@ -341,7 +341,7 @@ async function loadPostsIndex(){
   optLoading.textContent = "(불러오는 중...)";
   list.appendChild(optLoading);
 
-  const cats = ["reviews", "papers", "notes", "etc"];
+  const cats = ["Paper-review", "Implementation", "Projects"];
   const items = [];
 
   for(const cat of cats){
