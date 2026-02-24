@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>YoungHyuk</title>
   <link rel="stylesheet" href="assets/style.css" />
-  <!-- 홈에서는 router.js 필요 없음 -->
   <script defer src="assets/app.js"></script>
 </head>
 <body>
@@ -23,67 +22,54 @@
   </header>
 
   <div class="container">
-    <section class="hero">
-      <div class="card">
+    <!-- one-liner intro -->
+    <div class="card">
+      <div class="pad">
+        <h1 class="h1" style="margin-bottom:6px">Research Notes</h1>
+        <p class="p" style="margin:0">
+          논문 리뷰 · 구현 기록 · 프로젝트 로그를 모아두는 개인 아카이브.
+        </p>
+      </div>
+    </div>
+
+    <section class="grid">
+      <!-- recent -->
+      <div class="card col-8">
         <div class="pad">
-          <h1 class="h1">Lab Notes & Projects</h1>
-          <p class="p">논문 리뷰, 구현 기록, 프로젝트 진행 상황을 정리하는 공간.</p>
-          <div class="hr"></div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap">
-            <a class="btn primary" href="reviews.html">논문 리뷰</a>
-            <a class="btn" href="implementations.html">논문 구현</a>
-            <a class="btn" href="projects.html">프로젝트</a>
-          </div>
-          <p class="small" style="margin-top:10px">※ 로그인/관리 페이지는 홈에서 노출하지 않음(직접 URL 접근만).</p>
+          <div class="section-title">최근 글</div>
+          <div id="recentList" class="list"></div>
+          <p class="small" style="margin-top:10px">content/posts.json 기반으로 최근 글을 보여줘.</p>
         </div>
       </div>
 
-      <div class="card">
+      <!-- minimal side links (no cards, no duplicates) -->
+      <div class="card col-4">
         <div class="pad">
-          <div class="section-title">Quick</div>
+          <div class="section-title">카테고리</div>
           <div class="list">
             <a class="item" href="reviews.html">
               <div style="flex:1">
                 <div style="font-weight:800">논문 리뷰</div>
-                <div class="meta"><span class="badge">요약/코멘트</span></div>
+                <div class="small">읽은 논문 정리</div>
               </div>
             </a>
             <a class="item" href="implementations.html">
               <div style="flex:1">
                 <div style="font-weight:800">논문 구현</div>
-                <div class="meta"><span class="badge">코드/실험</span></div>
+                <div class="small">코드/실험 기록</div>
               </div>
             </a>
             <a class="item" href="projects.html">
               <div style="flex:1">
                 <div style="font-weight:800">프로젝트</div>
-                <div class="meta"><span class="badge">진행/완료</span></div>
+                <div class="small">진행/완료 로그</div>
               </div>
             </a>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <section class="grid">
-      <div class="card col-8">
-        <div class="pad">
-          <div class="section-title">최근 글</div>
-          <div id="recentList" class="list"></div>
-          <p class="small">content/posts.json 기반으로 최근 글을 보여줘.</p>
-        </div>
-      </div>
-
-      <div class="card col-4">
-        <div class="pad">
-          <div class="section-title">About</div>
-          <p class="p" style="margin:0">
-            Research notes, implementation logs, and projects.
-          </p>
           <div class="hr"></div>
           <div class="small">
-            - Category: reviews / implementations / projects<br/>
-            - Markdown posts under <span style="font-family:var(--mono)">content/</span>
+            ※ 로그인/관리 페이지는 홈에서 노출하지 않음(직접 URL 접근).
           </div>
         </div>
       </div>
