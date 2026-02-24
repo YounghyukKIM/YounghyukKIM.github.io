@@ -1,16 +1,9 @@
 [
   {
-    "title": "Transformer : Rotary",
+    "title": "테스트",
     "date": "2026-02-24",
     "category": "reviews",
-    "tags": "Transformer",
-    "path": "content/reviews/rope.md"
-  },
-  {
-    "title": "test",
-    "date": "",
-    "category": "reviews",
-    "tags": "",
+    "tags": "테스트",
     "path": "content/reviews/test.md"
   }
 ]
