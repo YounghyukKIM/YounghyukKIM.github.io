@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>논문 리뷰</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <script defer src="assets/markdown.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
+      <nav class="nav" id="nav">
+        <a href="index.html" data-nav="home">홈</a>
+        <a href="reviews.html" data-nav="reviews">논문 리뷰</a>
+        <a href="implementations.html" data-nav="impl">논문 구현</a>
+        <a href="projects.html" data-nav="projects">프로젝트</a>
+        <a href="contacts.html" data-nav="contacts">연락처</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="pad">
+        <h1 class="h1">논문 리뷰</h1>
+        <p class="p">content/reviews 아래 md 파일들을 자동으로 불러와 리스트로 보여줘.</p>
+      </div>
+    </div>
+
+    <div class="section-title">Posts</div>
+    <div id="postList" class="list"></div>
+
+    <footer class="footer">
+      <a href="admin.html">관리자</a>
+    </footer>
+  </div>
+
+  <script>
+    window.PAGE_CATEGORY = "reviews";
+  </script>
+</body>
+</html>

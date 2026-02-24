@@ -1,11 +1,91 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>YoungHyuk's Notes</title>
-  </head>
-  <body>
-    <h1>YoungHyuk's Notes</h1>
-    <p>Paper reviews, reproductions, and project logs.</p>
-  </body>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>YoungHyuk — Lab Notes</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
+      <nav class="nav" id="nav">
+        <a href="index.html" data-nav="home">홈</a>
+        <a href="reviews.html" data-nav="reviews">논문 리뷰</a>
+        <a href="implementations.html" data-nav="impl">논문 구현</a>
+        <a href="projects.html" data-nav="projects">프로젝트</a>
+        <a href="contacts.html" data-nav="contacts">연락처</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <section class="hero">
+      <div class="card">
+        <div class="pad">
+          <h1 class="h1">논문 리뷰 · 구현 · 프로젝트를 한 곳에</h1>
+          <p class="p">정적 블로그 + 관리자 페이지(/admin.html)로 작성/미리보기/삭제까지. <span class="kbd">GitHub Pages</span>만으로 운영.</p>
+          <div class="hr"></div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <a class="btn primary" href="reviews.html">논문 리뷰 보기</a>
+            <a class="btn" href="admin.html">관리자(/admin)</a>
+          </div>
+          <p class="small" style="margin-top:10px">관리자는 GitHub OAuth로 로그인해서 너만 편집 가능하게 구성돼.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="pad">
+          <div class="section-title">Quick</div>
+          <div class="list">
+            <a class="item" href="reviews.html">
+              <div style="flex:1">
+                <div style="font-weight:700">논문 리뷰</div>
+                <div class="meta"><span class="badge">읽은 논문 정리</span></div>
+              </div>
+            </a>
+            <a class="item" href="implementations.html">
+              <div style="flex:1">
+                <div style="font-weight:700">논문 구현</div>
+                <div class="meta"><span class="badge">코드/실험 기록</span></div>
+              </div>
+            </a>
+            <a class="item" href="projects.html">
+              <div style="flex:1">
+                <div style="font-weight:700">프로젝트</div>
+                <div class="meta"><span class="badge">진행중/완료</span></div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card col-8">
+        <div class="pad">
+          <div class="section-title">최근 글</div>
+          <div id="recentList" class="list"></div>
+          <p class="small">※ 최근 글은 content 폴더의 md를 읽어와서 표시함(빌드 없이 클라 렌더).</p>
+        </div>
+      </div>
+
+      <div class="card col-4">
+        <div class="pad">
+          <div class="section-title">카테고리</div>
+          <div class="list">
+            <a class="item" href="reviews.html"><div><b>논문 리뷰</b><div class="small">content/reviews</div></div></a>
+            <a class="item" href="implementations.html"><div><b>논문 구현</b><div class="small">content/implementations</div></div></a>
+            <a class="item" href="projects.html"><div><b>프로젝트</b><div class="small">content/projects</div></div></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      © <span id="year"></span> YoungHyuk · <a href="admin.html">Admin</a>
+    </footer>
+  </div>
+</body>
 </html>

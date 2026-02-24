@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <script defer src="assets/markdown.js"></script>
+  <script defer src="assets/admin.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
+      <nav class="nav">
+        <a href="index.html">홈</a>
+        <a class="active" href="admin.html">관리자</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="pad">
+        <h1 class="h1">관리자</h1>
+        <p class="p">GitHub OAuth 로그인 → 글 작성/수정/삭제를 GitHub API로 커밋해.</p>
+        <div class="hr"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+          <button class="btn primary" id="loginBtn">GitHub로 로그인</button>
+          <button class="btn" id="logoutBtn" disabled>로그아웃</button>
+          <span class="small" id="whoami"></span>
+        </div>
+        <p class="small" id="adminNote" style="margin-top:10px"></p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card col-8">
+        <div class="pad">
+          <div class="section-title">작성</div>
+
+          <div class="row">
+            <div>
+              <label class="small">카테고리</label>
+              <select id="category" class="input">
+                <option value="reviews">논문 리뷰</option>
+                <option value="implementations">논문 구현</option>
+                <option value="projects">프로젝트</option>
+              </select>
+            </div>
+            <div>
+              <label class="small">Slug (파일명)</label>
+              <input id="slug" class="input" placeholder="e.g. manifold-aware-transformer" />
+              <div class="small">저장 경로: <span id="pathHint" style="font-family:var(--mono)"></span></div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <div>
+              <label class="small">제목</label>
+              <input id="title" class="input" placeholder="제목" />
+            </div>
+            <div>
+              <label class="small">설명(선택)</label>
+              <input id="desc" class="input" placeholder="한 줄 요약" />
+            </div>
+          </div>
+
+          <div class="split" style="margin-top:10px">
+            <div>
+              <label class="small">Markdown</label>
+              <textarea id="md" placeholder="# 내용..."></textarea>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px">
+                <button class="btn" id="saveDraftBtn">임시저장</button>
+                <button class="btn ok" id="publishBtn" disabled>발행(커밋)</button>
+              </div>
+              <p class="small">임시저장은 브라우저 localStorage에 저장돼. 발행은 GitHub에 커밋.</p>
+            </div>
+            <div>
+              <label class="small">미리보기</label>
+              <div class="preview" id="preview"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card col-4">
+        <div class="pad">
+          <div class="section-title">관리</div>
+          <div class="row">
+            <div>
+              <label class="small">카테고리</label>
+              <select id="manageCategory" class="input">
+                <option value="reviews">논문 리뷰</option>
+                <option value="implementations">논문 구현</option>
+                <option value="projects">프로젝트</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:end">
+              <button class="btn" id="refreshBtn" disabled>목록 새로고침</button>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+          <div id="manageList" class="list"></div>
+
+          <p class="small" style="margin-top:10px">
+            삭제는 GitHub에서 해당 md 파일을 삭제 커밋하는 방식.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      ※ GitHub Pages는 서버가 없어서 “진짜 로그인 서버”는 못 돌려. 대신 GitHub OAuth로 “너의 GitHub 계정만” 커밋 가능하게 막는 구조야.
+    </footer>
+  </div>
+</body>
+</html>
