@@ -306,7 +306,7 @@ async function readMetaFromMd(path){
 }
 
 async function rebuildPostsJson(){
-  const cats = ["reviews","papers","notes","etc"];
+  const cats = ["Paper-reviews","Implementation","Project"];
   const posts = [];
 
   for(const c of cats){
