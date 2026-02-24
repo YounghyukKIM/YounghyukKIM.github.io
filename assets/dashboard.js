@@ -297,11 +297,16 @@ async function rebuildPostsJson(){
   await putFile("content/posts.json", json, "dashboard: rebuild posts index");
 }
 
-// ===== UI: list posts =====
 async function loadPostsIndex(){
   const list = $("#postsList");
   if(!list) return;
-  list.innerHTML = `<option value="">(불러오는 중...)</option>`;
+
+  // 초기화
+  list.innerHTML = "";
+  const optLoading = document.createElement("option");
+  optLoading.value = "";
+  optLoading.textContent = "(불러오는 중...)";
+  list.appendChild(optLoading);
 
   const cats = ["reviews", "papers", "notes", "etc"];
   const items = [];
@@ -309,27 +314,48 @@ async function loadPostsIndex(){
   for(const cat of cats){
     try{
       const arr = await ghFetch(
-        `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(`content/${cat}`)}?ref=${GITHUB_BRANCH}`
+        `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(`content/${cat}`)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
       );
       (arr||[]).forEach(it=>{
         if(it && it.type==="file" && it.name.endsWith(".md")){
-          items.push({ label: `${cat}/${it.name}`, path: `content/${cat}/${it.name}` });
+          items.push({
+            label: `${cat}/${it.name}`,
+            path: `content/${cat}/${it.name}`,
+            sha: it.sha, // ✅ 여기서 sha 확보
+          });
         }
       });
-    }catch{
+    }catch(e){
       // 폴더 없으면 스킵
     }
   }
 
-  if(items.length===0){
-    list.innerHTML = `<option value="">(게시글 없음)</option>`;
+  // 로딩 옵션 제거
+  list.innerHTML = "";
+
+  if(items.length === 0){
+    const optEmpty = document.createElement("option");
+    optEmpty.value = "";
+    optEmpty.textContent = "(게시글 없음)";
+    list.appendChild(optEmpty);
     return;
   }
 
   items.sort((a,b)=>a.label.localeCompare(b.label));
-  list.innerHTML =
-    `<option value="">(선택)</option>` +
-    items.map(it=>`<option value="${it.path}">${it.label}</option>`).join("");
+
+  const optPick = document.createElement("option");
+  optPick.value = "";
+  optPick.textContent = "(선택)";
+  list.appendChild(optPick);
+
+  // ✅ option.dataset.sha 에 sha 저장
+  for(const it of items){
+    const opt = document.createElement("option");
+    opt.value = it.path;
+    opt.textContent = it.label;
+    if(it.sha) opt.dataset.sha = it.sha;
+    list.appendChild(opt);
+  }
 }
 
 async function openPost(path){
