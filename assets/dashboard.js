@@ -181,16 +181,15 @@ function insertAtCursor(textarea, text) {
   textarea.selectionStart = textarea.selectionEnd = pos;
 }
 
-// ===== 🔥 render-time broken image fixer (show immediately) =====
 function fixBrokenImagesForRender(body, cat, slug) {
   const folder = `assets/uploads/${cat}/${slug}`;
 
-  // Match: "!filename.ext" (NOT "![alt](...)" ) -> "![](<folder>/filename.ext)"
-  // Works with hyphens/time-like names: image-2026-02-24T16-19-18-522Z.jpeg
-  const re = /(^|[\s])!(?!\[)([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|gif|webp))(?=\s|$|[)\],.!?])/gi;
+  // ✅ 공백/문장부호/줄 시작 상관없이: "!filename.ext"면 다 잡음
+  // ✅ 정상 이미지 문법 "![alt](...)" 는 제외됨 (!(?!\[))
+  const re = /!(?!\[)([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|gif|webp))/gi;
 
-  return String(body || "").replace(re, (m, p1, fname) => {
-    return `${p1}![](${folder}/${fname})`;
+  return String(body || "").replace(re, (m, fname) => {
+    return `![](${folder}/${fname})`;
   });
 }
 
