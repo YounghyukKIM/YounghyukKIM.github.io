@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>YoungHyuk</title>
   <link rel="stylesheet" href="assets/style.css" />
+
+  <!-- posts.json 기반 리스트 렌더링 -->
   <script defer src="assets/app.js"></script>
 </head>
 <body>
@@ -79,5 +81,9 @@
       © <span id="year"></span> YoungHyuk
     </footer>
   </div>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
