@@ -5,5 +5,12 @@
     "category": "reviews",
     "tags": "테스트",
     "path": "content/reviews/test.md"
+  },
+  {
+    "title": "This is test",
+    "date": "2026-02-24",
+    "category": "reviews",
+    "tags": "AI",
+    "path": "content/reviews/this-is-test.md"
   }
 ]
