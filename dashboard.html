@@ -1,82 +1,138 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dashboard | YoungHyuk Blog</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard | YoungHyuk</title>
   <link rel="stylesheet" href="assets/style.css" />
+  <!-- 대시보드 로직 -->
+  <script defer src="assets/dashboard.js"></script>
+  <!-- markdown 렌더러 (preview용) -->
+  <script defer src="assets/markdown.js"></script>
 </head>
 <body>
+  <!-- ✅ index.html과 동일한 topbar 스타일 유지 -->
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
 
-  <header class="dash-header">
-    <div class="dash-header__left">
-      <strong class="dash-title">Dashboard</strong>
-      <span id="whoami" class="dash-whoami"></span>
-      <span id="dashNote" class="dash-note"></span>
+      <!-- ✅ 네비 느낌 유지 (대시보드는 직접 URL 접근용이니까 간단히) -->
+      <nav class="nav" id="nav">
+        <a href="index.html">홈</a>
+        <a href="reviews.html">논문 리뷰</a>
+        <a href="implementations.html">논문 구현</a>
+        <a href="projects.html">프로젝트</a>
+        <a href="contacts.html">연락처</a>
+        <a class="active" href="dashboard.html">대시보드</a>
+      </nav>
     </div>
-
-    <!-- ✅ JS와 id 통일 -->
-    <button id="logoutBtn" class="btn btn-danger">로그아웃</button>
   </header>
 
-  <main class="dash-main">
-    <!-- LEFT: EDITOR -->
-    <section class="dash-panel dash-panel--editor">
-      <h2 class="dash-h2">✍ 글 작성</h2>
+  <div class="container">
+    <!-- one-liner intro card (index 느낌 그대로) -->
+    <div class="card">
+      <div class="pad">
+        <h1 class="h1" style="margin-bottom:6px">Dashboard</h1>
+        <p class="p" style="margin:0">
+          글 작성 · 임시저장 · 발행(Commit) · 삭제 · 미리보기
+        </p>
+        <div class="small" style="margin-top:8px">
+          <span id="whoami"></span>
+          <span id="dashNote" style="margin-left:8px"></span>
+        </div>
 
-      <label for="title">Title</label>
-      <input type="text" id="title" placeholder="글 제목" />
+        <!-- ✅ JS와 id 통일: logoutBtn -->
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="logoutBtn" class="btn">로그아웃</button>
+          <div id="status" class="small"></div>
+        </div>
+      </div>
+    </div>
 
-      <label for="date">Date</label>
-      <input type="date" id="date" />
+    <section class="grid">
+      <!-- LEFT: editor -->
+      <div class="card col-8">
+        <div class="pad">
+          <div class="section-title">글 작성</div>
 
-      <label for="category">Category</label>
-      <select id="category">
-        <option value="reviews">reviews</option>
-        <option value="papers">papers</option>
-        <option value="notes">notes</option>
-        <option value="etc">etc</option>
-      </select>
+          <div class="small" style="margin:10px 0 6px">Title</div>
+          <input id="title" class="input" type="text" placeholder="글 제목" />
 
-      <label for="slug">Slug (파일 이름)</label>
-      <input type="text" id="slug" placeholder="my-post-title" />
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div>
+              <div class="small" style="margin:10px 0 6px">Date</div>
+              <input id="date" class="input" type="date" />
+            </div>
+            <div>
+              <div class="small" style="margin:10px 0 6px">Category</div>
+              <select id="category" class="input">
+                <option value="reviews">reviews</option>
+                <option value="papers">papers</option>
+                <option value="notes">notes</option>
+                <option value="etc">etc</option>
+              </select>
+            </div>
+          </div>
 
-      <div class="dash-small-note">
-        저장 경로: <span id="pathHint"></span>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div>
+              <div class="small" style="margin:10px 0 6px">Slug (파일명)</div>
+              <input id="slug" class="input" type="text" placeholder="my-post-title" />
+              <div class="small" style="margin-top:6px">
+                저장 경로: <span id="pathHint"></span>
+              </div>
+            </div>
+            <div>
+              <div class="small" style="margin:10px 0 6px">Tags (쉼표 구분)</div>
+              <input id="tags" class="input" type="text" placeholder="AI, Vision, RL" />
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="small" style="margin:10px 0 6px">Markdown</div>
+          <textarea id="md" class="input" style="min-height:320px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+            placeholder="Markdown 내용을 입력하세요..."></textarea>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button id="btnSaveDraft" class="btn">임시저장</button>
+            <button id="btnLoadDraft" class="btn">불러오기</button>
+            <button id="btnPublish" class="btn">발행(Commit)</button>
+            <button id="btnDelete" class="btn">삭제</button>
+          </div>
+
+          <div class="small" style="margin-top:10px">
+            ※ 발행은 GitHub에 커밋이 생김. (content/{category}/{slug}.md)
+          </div>
+        </div>
       </div>
 
-      <label for="tags">Tags (쉼표 구분)</label>
-      <input type="text" id="tags" placeholder="AI, Vision, RL" />
+      <!-- RIGHT: preview + list -->
+      <div class="card col-4">
+        <div class="pad">
+          <div class="section-title">미리보기</div>
+          <div id="preview" class="p" style="margin-top:10px"></div>
 
-      <label for="md">Markdown</label>
-      <textarea id="md" placeholder="Markdown 내용을 입력하세요..."></textarea>
+          <div class="hr"></div>
 
-      <div class="dash-actions">
-        <button id="btnSaveDraft" class="btn">임시저장</button>
-        <button id="btnLoadDraft" class="btn">불러오기</button>
-        <button id="btnPublish" class="btn btn-primary">발행(Commit)</button>
-        <button id="btnDelete" class="btn btn-danger">삭제</button>
+          <div class="section-title">게시글 목록</div>
+          <div class="small" style="margin:8px 0">
+            아래에서 글 선택하면 편집기에 불러와짐.
+          </div>
+
+          <select id="postsList" class="input" size="10" style="width:100%"></select>
+        </div>
       </div>
-
-      <div id="status" class="dash-status"></div>
     </section>
 
-    <!-- RIGHT: PREVIEW & POSTS -->
-    <section class="dash-panel dash-panel--preview">
-      <h2 class="dash-h2">👀 미리보기</h2>
-      <div id="preview" class="dash-preview"></div>
+    <footer class="footer">
+      © <span id="year"></span> YoungHyuk
+    </footer>
+  </div>
 
-      <hr class="dash-hr" />
-
-      <h2 class="dash-h2">📂 게시글 목록</h2>
-      <select id="postsList" class="dash-posts-list" size="10"></select>
-    </section>
-  </main>
-
-  <!-- markdown renderer -->
-  <script src="assets/markdown.js"></script>
-  <!-- ✅ 수정된 JS -->
-  <script src="assets/dashboard.js"></script>
-
+  <script>
+    // index.html 느낌 유지: footer year
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
