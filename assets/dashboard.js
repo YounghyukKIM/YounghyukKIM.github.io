@@ -1,6 +1,11 @@
 // assets/dashboard.js
 const $ = (s)=>document.querySelector(s);
 
+// Encode a GitHub contents path safely (keep "/" separators)
+function encPath(p){
+  return String(p || "").split("/").map(encodeURIComponent).join("/");
+}
+
 // === repo config ===
 const GITHUB_OWNER = "younghyukkim";
 const GITHUB_REPO  = "younghyukkim.github.io";
@@ -14,384 +19,343 @@ function getToken(){ return localStorage.getItem(TOKEN_KEY); }
 function getMe(){ return localStorage.getItem(ME_KEY) || ""; }
 function clearAuth(){ localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(ME_KEY); }
 
-async function ghFetch(path, options={}){
+async function ghFetch(path, opts={}){
   const token = getToken();
-  if(!token) throw new Error("No token");
   const res = await fetch(`https://api.github.com${path}`, {
-    ...options,
+    ...opts,
     headers: {
-      "Accept":"application/vnd.github+json",
-      "Authorization": `Bearer ${token}`,
-      ...(options.headers||{})
+      ...(opts.headers||{}),
+      "Authorization": `token ${token}`,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
     }
   });
   if(!res.ok){
     const t = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${t}`);
+    throw new Error(`GitHub API ${res.status}: ${t}`);
   }
   return res.json();
 }
 
-async function ghFetchRaw(path){
+async function ghFetchRaw(path, opts={}){
   const token = getToken();
-  if(!token) throw new Error("No token");
   const res = await fetch(`https://api.github.com${path}`, {
+    ...opts,
     headers: {
-      "Accept":"application/vnd.github.raw+json",
-      "Authorization": `Bearer ${token}`
+      ...(opts.headers||{}),
+      "Authorization": `token ${token}`,
+      "Accept": "application/vnd.github.raw",
+      "X-GitHub-Api-Version": "2022-11-28",
     }
   });
-  if(!res.ok) throw new Error(await res.text());
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error(`GitHub RAW ${res.status}: ${t}`);
+  }
   return res.text();
 }
 
-function nowISODate(){
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth()+1).padStart(2,"0");
-  const dd = String(d.getDate()).padStart(2,"0");
-  return `${yyyy}-${mm}-${dd}`;
+// ===== markdown helpers =====
+function parseFrontMatter(md){
+  // very small frontmatter parser: expects starting ---
+  if(!md.startsWith("---")) return { meta:{}, body: md };
+  const end = md.indexOf("\n---", 3);
+  if(end < 0) return { meta:{}, body: md };
+  const raw = md.slice(3, end).trim();
+  const body = md.slice(end + "\n---".length).replace(/^\n/, "");
+  const meta = {};
+  raw.split("\n").forEach(line=>{
+    const i = line.indexOf(":");
+    if(i>0){
+      const k = line.slice(0,i).trim();
+      const v = line.slice(i+1).trim();
+      meta[k]=v;
+    }
+  });
+  return { meta, body };
 }
 
+function buildPostMarkdown(meta, body){
+  const fm = [
+    "---",
+    `title: ${meta.title || ""}`,
+    `date: ${meta.date || new Date().toISOString().slice(0,10)}`,
+    `category: ${meta.category || "reviews"}`,
+    `tags: ${meta.tags || ""}`,
+    "---",
+    "",
+  ].join("\n");
+  return fm + (body||"");
+}
+
+// ===== Path rules =====
+// posts stored at: content/<category>/<slug>.md
 function slugify(s){
-  return s.toLowerCase().trim()
+  return (s||"")
+    .trim()
+    .toLowerCase()
     .replace(/[^\w\s-]/g,"")
     .replace(/\s+/g,"-")
     .replace(/-+/g,"-");
 }
 
-async function getFileSha(path){
-  try{
-    const data = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(path)}?ref=${GITHUB_BRANCH}`);
-    return data.sha;
-  }catch{ return null; }
+function getDraftKey(){
+  const cat = $("#category")?.value || "reviews";
+  const slug = slugify($("#slug")?.value || "untitled");
+  return `dash_draft_${cat}_${slug}`;
 }
 
-async function putFile(path, contentText, message){
-  const b64 = btoa(unescape(encodeURIComponent(contentText)));
+function currentPath(){
+  const cat = $("#category")?.value || "reviews";
+  const slug = slugify($("#slug")?.value || "untitled");
+  return `content/${cat}/${slug}.md`;
+}
+
+function updatePathHint(){
+  const el = $("#pathHint");
+  if(el) el.textContent = currentPath();
+}
+
+function showStatus(msg, ok=true){
+  const st = $("#status");
+  if(!st) return;
+  st.textContent = msg;
+  st.style.color = ok ? "#1b5e20" : "#b71c1c";
+}
+
+// ===== drafts (localStorage) =====
+function saveDraft(){
+  const key = getDraftKey();
+  const meta = {
+    title: $("#title")?.value || "",
+    date: $("#date")?.value || "",
+    category: $("#category")?.value || "reviews",
+    tags: $("#tags")?.value || "",
+    slug: $("#slug")?.value || "",
+    md: $("#md")?.value || "",
+  };
+  localStorage.setItem(key, JSON.stringify(meta));
+  showStatus(`임시저장 완료: ${key}`);
+}
+
+function loadDraft(){
+  const key = getDraftKey();
+  const raw = localStorage.getItem(key);
+  if(!raw){
+    showStatus("임시저장 데이터가 없음", false);
+    return;
+  }
+  try{
+    const d = JSON.parse(raw);
+    if($("#title")) $("#title").value = d.title || "";
+    if($("#date")) $("#date").value = d.date || "";
+    if($("#category")) $("#category").value = d.category || "reviews";
+    if($("#tags")) $("#tags").value = d.tags || "";
+    if($("#slug")) $("#slug").value = d.slug || "";
+    if($("#md")) $("#md").value = d.md || "";
+    updatePathHint();
+    updatePreview();
+    showStatus("임시저장 불러오기 완료");
+  }catch(e){
+    showStatus("임시저장 파싱 실패", false);
+  }
+}
+
+// ===== preview =====
+function updatePreview(){
+  const md = $("#md")?.value || "";
+  const parsed = parseFrontMatter(md);
+  const html = window.mdToHtml ? window.mdToHtml(parsed.body) : "";
+  const pv = $("#preview");
+  if(pv) pv.innerHTML = html;
+}
+
+// ===== github contents helpers =====
+async function getFileSha(path){
+  try{
+    const data = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`);
+    return data.sha;
+  }catch{
+    return null;
+  }
+}
+
+async function putFile(path, content, message){
   const sha = await getFileSha(path);
-  const body = { message, content: b64, branch: GITHUB_BRANCH, ...(sha ? {sha} : {}) };
-  return ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(path)}`, {
+  const body = { message, branch: GITHUB_BRANCH, content: btoa(unescape(encodeURIComponent(content))), ...(sha?{sha}: {}) };
+  return ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`, {
     method:"PUT",
     headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 }
 
 async function deleteFile(path, message){
   const sha = await getFileSha(path);
-  if(!sha) throw new Error("File not found");
-  const body = { message, sha, branch: GITHUB_BRANCH };
-  return ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(path)}`, {
+  if(!sha) throw new Error("파일이 존재하지 않음");
+  const body = { message, branch: GITHUB_BRANCH, sha };
+  return ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`, {
     method:"DELETE",
     headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 }
 
+// ===== UI: list posts =====
 async function loadPostsIndex(){
-  try{
-    const txt = await ghFetchRaw(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/content/posts.json?ref=${GITHUB_BRANCH}`);
-    return JSON.parse(txt);
-  }catch{
-    return { posts: [] };
+  const list = $("#postsList");
+  if(!list) return;
+  list.innerHTML = `<option value="">(불러오는 중...)</option>`;
+
+  // categories known
+  const cats = ["reviews", "papers", "notes", "etc"];
+  const items = [];
+
+  for(const cat of cats){
+    try{
+      const arr = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(`content/${cat}`)}?ref=${GITHUB_BRANCH}`);
+      (arr||[]).forEach(it=>{
+        if(it && it.type==="file" && it.name.endsWith(".md")){
+          items.push({
+            label: `${cat}/${it.name}`,
+            path: `content/${cat}/${it.name}`,
+          });
+        }
+      });
+    }catch(e){
+      // ignore if folder doesn't exist
+    }
   }
-}
 
-async function savePostsIndex(idx){
-  await putFile("content/posts.json", JSON.stringify(idx, null, 2), "Update posts index");
-}
-
-function buildFrontMatter({title, desc, date, category, slug}){
-  return `---\ntitle: ${title}\ndesc: ${desc || ""}\ndate: ${date}\ncategory: ${category}\nslug: ${slug}\n---\n\n`;
-}
-
-/* ===== editor helpers ===== */
-function updatePathHint(){
-  const c = $("#category").value || "reviews";
-  const s = $("#slug").value || "(slug)";
-  $("#pathHint").textContent = `content/${c}/${s}.md`;
-}
-
-function updatePreview(){
-  $("#preview").innerHTML = window.mdToHtml ? window.mdToHtml($("#md").value || "") : "";
-}
-
-function insertAtCursor(text){
-  const ta = $("#md");
-  const start = ta.selectionStart ?? ta.value.length;
-  const end = ta.selectionEnd ?? ta.value.length;
-  ta.value = ta.value.slice(0,start) + text + ta.value.slice(end);
-  const pos = start + text.length;
-  ta.focus();
-  ta.selectionStart = ta.selectionEnd = pos;
-  updatePreview();
-}
-
-function wrapSelection(left, right){
-  const ta = $("#md");
-  const start = ta.selectionStart ?? 0;
-  const end = ta.selectionEnd ?? 0;
-  const sel = ta.value.slice(start, end);
-  const before = ta.value.slice(0,start);
-  const after = ta.value.slice(end);
-  ta.value = before + left + sel + right + after;
-  ta.focus();
-  if(sel){
-    ta.selectionStart = start + left.length;
-    ta.selectionEnd = start + left.length + sel.length;
-  }else{
-    ta.selectionStart = ta.selectionEnd = start + left.length;
-  }
-  updatePreview();
-}
-
-/* ===== manage list ===== */
-function manageItemHtml(p){
-  const href = `post.html?c=${encodeURIComponent(p.category)}&s=${encodeURIComponent(p.slug)}`;
-  return `
-    <div class="item">
-      <div style="flex:1">
-        <div style="font-weight:800">${p.title}</div>
-        <div class="meta"><span class="badge">${p.slug}</span><span>${p.date||""}</span></div>
-        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
-          <a class="btn" href="${href}" target="_blank" rel="noopener">보기</a>
-          <button class="btn danger" data-del="${p.category}/${p.slug}">삭제</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-async function refreshManageList(){
-  const idx = await loadPostsIndex();
-  const cat = $("#manageCategory").value;
-  const posts = idx.posts
-    .filter(p=>p.category===cat)
-    .sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-
-  $("#manageList").innerHTML = posts.length ? posts.map(manageItemHtml).join("") : `<div class="small">글이 없어.</div>`;
-
-  document.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.addEventListener("click", async ()=>{
-      const [category, slug] = btn.getAttribute("data-del").split("/");
-      if(!confirm(`정말 삭제?\ncontent/${category}/${slug}.md`)) return;
-
-      await deleteFile(`content/${category}/${slug}.md`, `Delete: ${category}/${slug}`);
-
-      const idx2 = await loadPostsIndex();
-      idx2.posts = idx2.posts.filter(p=>!(p.category===category && p.slug===slug));
-      await savePostsIndex(idx2);
-
-      refreshManageList();
-    });
-  });
-}
-
-/* ===== publish / open ===== */
-async function publish(){
-  const category = $("#category").value;
-  const slug = slugify($("#slug").value.trim());
-  const title = $("#title").value.trim();
-  const desc = $("#desc").value.trim();
-  const body = $("#md").value;
-
-  if(!category || !slug || !title || !body.trim()){
-    alert("category/slug/title/내용은 필수!");
+  if(items.length===0){
+    list.innerHTML = `<option value="">(게시글 없음)</option>`;
     return;
   }
 
-  const date = nowISODate();
-  const full = buildFrontMatter({title, desc, date, category, slug}) + body.trim() + "\n";
-
-  await putFile(`content/${category}/${slug}.md`, full, `Publish: ${category}/${slug}`);
-
-  const idx = await loadPostsIndex();
-  const exists = idx.posts.find(p=>p.category===category && p.slug===slug);
-  const entry = { category, slug, title, desc, date };
-  if(exists) Object.assign(exists, entry);
-  else idx.posts.push(entry);
-
-  await savePostsIndex(idx);
-  alert("✅ 발행 완료");
-  refreshManageList();
+  items.sort((a,b)=>a.label.localeCompare(b.label));
+  list.innerHTML = `<option value="">(선택)</option>` + items.map(it=>`<option value="${it.path}">${it.label}</option>`).join("");
 }
 
-async function openPost(category, slug){
-  const path = `content/${category}/${slug}.md`;
-  const txt = await ghFetchRaw(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(path)}?ref=${GITHUB_BRANCH}`);
+async function openPost(path){
+  const txt = await ghFetchRaw(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`);
 
-  let meta = {};
-  let content = txt;
-  const fm = txt.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  if(fm){
-    fm[1].split("\n").forEach(l=>{
-      const i = l.indexOf(":");
-      if(i>0) meta[l.slice(0,i).trim()] = l.slice(i+1).trim();
-    });
-    content = fm[2];
+  const {meta, body} = parseFrontMatter(txt);
+  // infer category/slug from path
+  const m = path.match(/^content\/([^/]+)\/(.+)\.md$/);
+  const cat = m ? m[1] : (meta.category || "reviews");
+  const slug = m ? m[2] : "";
+
+  if($("#category")) $("#category").value = cat;
+  if($("#slug")) $("#slug").value = slug;
+  if($("#title")) $("#title").value = meta.title || "";
+  if($("#date")) $("#date").value = meta.date || "";
+  if($("#tags")) $("#tags").value = meta.tags || "";
+
+  // keep original markdown (including frontmatter) in editor
+  if($("#md")) $("#md").value = txt;
+
+  updatePathHint();
+  updatePreview();
+  showStatus(`열기 완료: ${path}`);
+}
+
+// ===== publish =====
+async function publish(){
+  const cat = $("#category")?.value || "reviews";
+  const slug = slugify($("#slug")?.value || "");
+  if(!slug){
+    showStatus("slug를 입력해줘!", false);
+    return;
   }
 
-  $("#category").value = category;
-  $("#slug").value = slug;
-  $("#title").value = meta.title || slug;
-  $("#desc").value = meta.desc || "";
-  $("#md").value = content.trim();
-  updatePathHint(); updatePreview();
-}
-
-/* ===== image upload =====
-   저장 경로: assets/uploads/<name>-<timestamp>.<ext>
-   (레포에 assets/uploads 폴더를 미리 만들어두면 베스트)
-*/
-async function uploadImageFile(file){
-  const ext = (file.name.split(".").pop() || "png").toLowerCase();
-  const base = slugify(file.name.replace(/\.[^/.]+$/, "")) || "image";
-  const filename = `${base}-${Date.now()}.${ext}`;
-  const repoPath = `assets/uploads/${filename}`;
-
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
-  const b64 = btoa(binary);
-
-  const sha = await getFileSha(repoPath);
-  const body = {
-    message: `Upload image: ${filename}`,
-    content: b64,
-    branch: GITHUB_BRANCH,
-    ...(sha ? {sha} : {})
+  // Build markdown with updated frontmatter/body
+  const bodyOnly = ($("#md")?.value || "");
+  const parsed = parseFrontMatter(bodyOnly);
+  const meta = {
+    title: $("#title")?.value || "",
+    date: ($("#date")?.value || "") || new Date().toISOString().slice(0,10),
+    category: cat,
+    tags: $("#tags")?.value || "",
   };
+  const md = buildPostMarkdown(meta, parsed.body);
 
-  await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(repoPath)}`, {
-    method:"PUT",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(body)
-  });
+  const path = currentPath();
+  showStatus("발행 중...");
 
-  insertAtCursor(`\n![${base}](assets/uploads/${filename})\n`);
+  try{
+    await putFile(path, md, `dashboard: publish ${path}`);
+    showStatus(`발행 완료 ✅  (${path})`);
+    await loadPostsIndex();
+  }catch(e){
+    showStatus(`발행 실패: ${e.message}`, false);
+  }
 }
 
-/* ===== init / wire ===== */
-(function init(){
-  // auth guard
+async function removeSelected(){
+  const list = $("#postsList");
+  const path = list?.value;
+  if(!path){
+    showStatus("삭제할 파일을 선택해줘!", false);
+    return;
+  }
+  showStatus("삭제 중...");
+  try{
+    await deleteFile(path, `dashboard: delete ${path}`);
+    showStatus(`삭제 완료 🗑️ (${path})`);
+    await loadPostsIndex();
+  }catch(e){
+    showStatus(`삭제 실패: ${e.message}`, false);
+  }
+}
+
+// ===== init =====
+document.addEventListener("DOMContentLoaded", async ()=>{
+  // auth check
   if(!getToken()){
     location.href = "login.html";
     return;
   }
 
   // header info
-  $("#whoami").textContent = `Logged in as ${getMe() || "(unknown)"}`;
-  $("#dashNote").textContent = "※ 홈에서는 이 페이지를 노출하지 않음(직접 URL 접근).";
+  const who = $("#whoami");
+  if(who) who.textContent = `Logged in as ${getMe() || "(unknown)"}`;
+  const note = $("#dashNote");
+  if(note) note.textContent = "※ 홈에서는 이 페이지를 노출하지 않음(직접 URL 접근).";
 
-  // logout link
-  $("#logoutLink").addEventListener("click", (e)=>{
-    e.preventDefault();
-    clearAuth();
-    location.href = "index.html";
-  });
+  // logout (supports either #logoutBtn or legacy #logoutLink)
+  const logoutBtn = $("#logoutBtn") || $("#logoutLink");
+  if (logoutBtn){
+    logoutBtn.addEventListener("click", (e)=>{
+      e.preventDefault?.();
+      clearAuth();
+      location.href = "index.html";
+    });
+  }
 
   // editor events
-  $("#category").addEventListener("change", updatePathHint);
-  $("#slug").addEventListener("input", updatePathHint);
-  $("#md").addEventListener("input", updatePreview);
+  if($("#category")) $("#category").addEventListener("change", updatePathHint);
+  if($("#slug")) $("#slug").addEventListener("input", updatePathHint);
+  if($("#md")) $("#md").addEventListener("input", updatePreview);
 
-  $("#title").addEventListener("input", ()=>{
-    if($("#slug").value.trim()) return;
-    const t = $("#title").value.trim();
-    if(t) $("#slug").value = slugify(t);
-    updatePathHint();
-  });
+  // buttons
+  if($("#btnSaveDraft")) $("#btnSaveDraft").addEventListener("click", saveDraft);
+  if($("#btnLoadDraft")) $("#btnLoadDraft").addEventListener("click", loadDraft);
+  if($("#btnPublish")) $("#btnPublish").addEventListener("click", publish);
+  if($("#btnDelete")) $("#btnDelete").addEventListener("click", removeSelected);
 
-  $("#saveDraftBtn").addEventListener("click", ()=>{
-    const k = `draft_${$("#category").value}_${$("#slug").value || "new"}`;
-    localStorage.setItem(k, JSON.stringify({
-      category: $("#category").value,
-      slug: $("#slug").value,
-      title: $("#title").value,
-      desc: $("#desc").value,
-      md: $("#md").value
-    }));
-    alert("임시저장 완료!");
-  });
-
-  $("#publishBtn").addEventListener("click", ()=>publish().catch(e=>alert(e.message)));
-
-  // manage
-  $("#refreshBtn").addEventListener("click", ()=>refreshManageList().catch(e=>alert(e.message)));
-  $("#manageCategory").addEventListener("change", ()=>refreshManageList().catch(()=>{}));
-
-  // toolbar
-  document.querySelectorAll("[data-ins]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const t = btn.getAttribute("data-ins");
-      if(t==="h2") insertAtCursor("\n## 소제목\n");
-      else if(t==="bold") wrapSelection("**","**");
-      else if(t==="inlinecode") wrapSelection("`","`");
-      else if(t==="codeblock"){
-        const lang = prompt("언어(예: python, cpp, bash). 비우면 plain","python") || "";
-        insertAtCursor(`\n\`\`\`${lang}\n// code here\n\`\`\`\n`);
-      }
-      else if(t==="link"){
-        const url = prompt("URL","https://") || "https://";
-        insertAtCursor(`[링크텍스트](${url})`);
-      }
+  // list events
+  if($("#postsList")){
+    $("#postsList").addEventListener("change", async ()=>{
+      const p = $("#postsList").value;
+      if(p) await openPost(p);
     });
-  });
+  }
 
-  $("#insertTemplateBtn").addEventListener("click", ()=>{
-    const tpl =
-`# Title
-
-## TL;DR
-- 
-
-## Problem
-- 
-
-## Method
-- 
-
-## Experiments
-- Dataset:
-- Metrics:
-- Results:
-
-## My Notes
-- 
-
-## Todo
-- [ ] 
-`;
-    insertAtCursor("\n" + tpl + "\n");
-  });
-
-  // image input
-  $("#imageFile").addEventListener("change", async (e)=>{
-    const f = e.target.files?.[0];
-    if(!f) return;
-    try{ await uploadImageFile(f); }
-    catch(err){ alert(err.message); }
-    e.target.value = "";
-  });
-
-  // drop zone
-  const dz = $("#dropZone");
-  dz.addEventListener("dragover", (e)=>{ e.preventDefault(); dz.style.borderColor="rgba(122,162,255,.6)"; });
-  dz.addEventListener("dragleave", ()=>{ dz.style.borderColor=""; });
-  dz.addEventListener("drop", async (e)=>{
-    e.preventDefault();
-    dz.style.borderColor="";
-    const f = e.dataTransfer?.files?.[0];
-    if(!f) return;
-    if(!f.type.startsWith("image/")) return alert("이미지 파일만 가능!");
-    try{ await uploadImageFile(f); }
-    catch(err){ alert(err.message); }
-  });
-
-  // initial UI
+  // init default fields
+  if($("#date") && !$("#date").value){
+    $("#date").value = new Date().toISOString().slice(0,10);
+  }
   updatePathHint();
   updatePreview();
-  refreshManageList().catch(()=>{});
-})();
+  await loadPostsIndex();
+});
