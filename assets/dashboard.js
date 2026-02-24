@@ -41,7 +41,6 @@ async function ghFetch(path, opts={}){
 }
 
 async function ghFetchRaw(path, opts={}){
-  // ✅ raw 텍스트(마크다운/JSON) 안정적으로 받기
   const token = getToken();
   const res = await fetch(`https://api.github.com${path}`, {
     ...opts,
@@ -125,6 +124,13 @@ function showStatus(msg, ok=true){
   st.style.color = ok ? "" : "crimson";
 }
 
+function showImgStatus(msg, ok=true){
+  const st = $("#imgStatus");
+  if(!st) return;
+  st.textContent = msg;
+  st.style.color = ok ? "" : "crimson";
+}
+
 // ===== drafts (localStorage) =====
 function saveDraft(){
   const key = getDraftKey();
@@ -172,6 +178,18 @@ function updatePreview(){
   if(pv) pv.innerHTML = html;
 }
 
+// ===== text insertion helper =====
+function insertAtCursor(textarea, text){
+  if(!textarea) return;
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const before = textarea.value.slice(0, start);
+  const after = textarea.value.slice(end);
+  textarea.value = before + text + after;
+  const pos = start + text.length;
+  textarea.selectionStart = textarea.selectionEnd = pos;
+}
+
 // ===== github contents helpers =====
 async function getFileSha(path){
   // 1) ref=브랜치로 시도
@@ -205,6 +223,7 @@ async function getFileSha(path){
   return null;
 }
 
+// text file put
 async function putFile(path, content, message){
   const sha = await getFileSha(path);
   const body = {
@@ -223,16 +242,33 @@ async function putFile(path, content, message){
   );
 }
 
+// ✅ binary(file) put (이미지 등)
+async function putBinaryFile(path, base64Content, message){
+  const sha = await getFileSha(path);
+  const body = {
+    message,
+    branch: GITHUB_BRANCH,
+    content: base64Content, // ⚠️ 이미 base64인 문자열 그대로
+    ...(sha ? { sha } : {})
+  };
+  return ghFetch(
+    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`,
+    {
+      method:"PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 async function deleteFile(path, message){
   const sha = await getFileSha(path);
 
   if(!sha){
-    // 진짜 없는지 한 번 더 확인용 메시지(디버깅 도움)
     try{
       await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`);
       throw new Error(`파일은 보이는데 sha를 못 가져왔어. 브랜치/권한 문제 가능성: ${path}`);
-    }catch(e){
-      // 여기서도 404면 진짜 없음
+    }catch{
       throw new Error(`삭제 실패: sha를 못 가져왔어(경로/브랜치 확인): ${path}`);
     }
   }
@@ -253,7 +289,7 @@ async function deleteFile(path, message){
 async function listDir(path){
   try{
     const arr = await ghFetch(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
     );
     return (arr||[]).filter(x => x.type==="file" && x.name.endsWith(".md"));
   }catch{
@@ -263,7 +299,7 @@ async function listDir(path){
 
 async function readMetaFromMd(path){
   const txt = await ghFetchRaw(
-    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`
+    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
   );
   const { meta } = parseFrontMatter(txt);
   return meta || {};
@@ -289,19 +325,16 @@ async function rebuildPostsJson(){
     }
   }
 
-  // 최신순 (yyyy-mm-dd 문자열)
   posts.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
   const json = JSON.stringify(posts, null, 2);
-
-  // ✅ 이게 index/reviews의 생명줄
   await putFile("content/posts.json", json, "dashboard: rebuild posts index");
 }
 
+// ===== UI: list posts (option.dataset.sha 저장) =====
 async function loadPostsIndex(){
   const list = $("#postsList");
   if(!list) return;
 
-  // 초기화
   list.innerHTML = "";
   const optLoading = document.createElement("option");
   optLoading.value = "";
@@ -321,16 +354,13 @@ async function loadPostsIndex(){
           items.push({
             label: `${cat}/${it.name}`,
             path: `content/${cat}/${it.name}`,
-            sha: it.sha, // ✅ 여기서 sha 확보
+            sha: it.sha,
           });
         }
       });
-    }catch(e){
-      // 폴더 없으면 스킵
-    }
+    }catch{}
   }
 
-  // 로딩 옵션 제거
   list.innerHTML = "";
 
   if(items.length === 0){
@@ -348,7 +378,6 @@ async function loadPostsIndex(){
   optPick.textContent = "(선택)";
   list.appendChild(optPick);
 
-  // ✅ option.dataset.sha 에 sha 저장
   for(const it of items){
     const opt = document.createElement("option");
     opt.value = it.path;
@@ -360,7 +389,7 @@ async function loadPostsIndex(){
 
 async function openPost(path){
   const txt = await ghFetchRaw(
-    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${GITHUB_BRANCH}`
+    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
   );
 
   const { meta } = parseFrontMatter(txt);
@@ -407,7 +436,7 @@ async function publish(){
 
   try{
     await putFile(path, md, `dashboard: publish ${path}`);
-    await rebuildPostsJson(); // ✅ 최근 글/목록 갱신
+    await rebuildPostsJson();
     showStatus(`발행 완료 ✅ (${path})`);
     await loadPostsIndex();
   }catch(e){
@@ -417,16 +446,37 @@ async function publish(){
 
 async function removeSelected(){
   const list = $("#postsList");
-  const path = list?.value;
+  if(!list){
+    showStatus("postsList가 없음", false);
+    return;
+  }
+  const opt = list.selectedOptions?.[0];
+  const path = (opt?.value || "").trim();
   if(!path){
     showStatus("삭제할 파일을 선택해줘!", false);
     return;
   }
 
   showStatus("삭제 중...");
+
   try{
-    await deleteFile(path, `dashboard: delete ${path}`);
-    await rebuildPostsJson(); // ✅ 최근 글/목록 갱신
+    // ✅ option의 sha 우선 사용
+    let sha = (opt?.dataset?.sha || "").trim();
+    if(!sha) sha = await getFileSha(path);
+    if(!sha) throw new Error(`sha를 못 가져왔어(경로/브랜치 확인): ${path}`);
+
+    const body = { message: `dashboard: delete ${path}`, branch: GITHUB_BRANCH, sha };
+
+    await ghFetch(
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`,
+      {
+        method:"DELETE",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(body),
+      }
+    );
+
+    await rebuildPostsJson();
     showStatus(`삭제 완료 🗑️ (${path})`);
     await loadPostsIndex();
   }catch(e){
@@ -434,9 +484,88 @@ async function removeSelected(){
   }
 }
 
+// ===== ✅ image upload =====
+function getImageFolder(){
+  // 글 단위로 이미지 폴더 분리: assets/uploads/<category>/<slug>/
+  const cat = $("#category")?.value || "reviews";
+  const slug = slugify($("#slug")?.value || "untitled");
+  return `assets/uploads/${cat}/${slug}`;
+}
+
+function safeFilename(name){
+  // 파일명에 공백/한글/특수문자 들어가도 GitHub 경로로 안전하게
+  const dot = name.lastIndexOf(".");
+  const base = (dot >= 0) ? name.slice(0, dot) : name;
+  const ext  = (dot >= 0) ? name.slice(dot).toLowerCase() : "";
+  const b = base
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g,"")
+    .replace(/\s+/g,"-")
+    .replace(/-+/g,"-");
+  const ts = new Date().toISOString().replace(/[:.]/g,"-");
+  return `${b || "image"}-${ts}${ext || ".png"}`;
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> {
+      const dataUrl = String(reader.result || "");
+      const comma = dataUrl.indexOf(",");
+      if(comma < 0) return reject(new Error("base64 변환 실패"));
+      resolve(dataUrl.slice(comma + 1)); // data:image/...;base64,xxxxx 중 xxxxx
+    };
+    reader.onerror = ()=> reject(new Error("파일 읽기 실패"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadImagesAndInsert(){
+  const input = $("#imgFile");
+  const files = Array.from(input?.files || []);
+  if(files.length === 0){
+    showImgStatus("이미지를 선택해줘!", false);
+    return;
+  }
+
+  // slug가 있어야 이미지 폴더가 안정적임
+  const slug = slugify($("#slug")?.value || "");
+  if(!slug){
+    showImgStatus("먼저 slug를 입력해줘! (이미지 폴더를 만들기 위해 필요)", false);
+    return;
+  }
+
+  const folder = getImageFolder();
+  const mdArea = $("#md");
+
+  showImgStatus("업로드 중...");
+
+  try{
+    for(const f of files){
+      const fname = safeFilename(f.name);
+      const path = `${folder}/${fname}`;
+      const b64 = await fileToBase64(f);
+
+      await putBinaryFile(path, b64, `dashboard: upload image ${path}`);
+
+      // ✅ 마크다운 커서 위치에 자동 삽입 (상대경로)
+      const rel = path; // 사이트 루트 기준 상대경로
+      const snippet = `\n![${fname}](${rel})\n`;
+      insertAtCursor(mdArea, snippet);
+    }
+
+    updatePreview();
+    // 파일 선택 초기화
+    input.value = "";
+    showImgStatus(`업로드 완료 ✅ (${files.length}개) — 마크다운에 삽입했어!`);
+  }catch(e){
+    showImgStatus(`업로드 실패: ${e.message}`, false);
+  }
+}
+
 // ===== init =====
 document.addEventListener("DOMContentLoaded", async ()=>{
-  // auth check
   if(!getToken()){
     location.href = "login.html";
     return;
@@ -448,7 +577,6 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   const note = $("#dashNote");
   if(note) note.textContent = "※ 대시보드는 직접 URL 접근용";
 
-  // logout
   const logoutBtn = $("#logoutBtn");
   if(logoutBtn){
     logoutBtn.addEventListener("click", (e)=>{
@@ -458,18 +586,17 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     });
   }
 
-  // editor events
   if($("#category")) $("#category").addEventListener("change", updatePathHint);
   if($("#slug")) $("#slug").addEventListener("input", updatePathHint);
   if($("#md")) $("#md").addEventListener("input", updatePreview);
 
-  // buttons
   if($("#btnSaveDraft")) $("#btnSaveDraft").addEventListener("click", saveDraft);
   if($("#btnLoadDraft")) $("#btnLoadDraft").addEventListener("click", loadDraft);
   if($("#btnPublish")) $("#btnPublish").addEventListener("click", publish);
   if($("#btnDelete")) $("#btnDelete").addEventListener("click", removeSelected);
 
-  // list change
+  if($("#btnUploadImg")) $("#btnUploadImg").addEventListener("click", uploadImagesAndInsert);
+
   if($("#postsList")){
     $("#postsList").addEventListener("change", async ()=>{
       const p = $("#postsList").value;
@@ -477,7 +604,6 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     });
   }
 
-  // init
   if($("#date") && !$("#date").value){
     $("#date").value = new Date().toISOString().slice(0,10);
   }
