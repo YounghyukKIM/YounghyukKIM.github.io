@@ -23,24 +23,31 @@ function qp(name){
   return new URLSearchParams(location.search).get(name);
 }
 
+function setActiveNav(){
+  const path = qp("path") || "";
+  const cat = (path.match(/^content\/([^/]+)\//) || [])[1] || "";
+  // nav에 active 클래스를 쓰는 스타일이면 여기서 토글 가능
+  // (현재는 생략)
+  return cat;
+}
+
 async function main(){
-  const path = qp("path"); // ex) content/reviews/my-post.md
+  const path = qp("path"); // ex) content/reviews/xxx.md
   if(!path){
     $("#postTitle").textContent = "잘못된 접근";
-    $("#postBody").textContent = "path 파라미터가 없어.";
+    $("#postBody").textContent = "URL에 ?path=content/... 이 필요해.";
     return;
   }
 
-  // back link (카테고리로)
-  const m = path.match(/^content\/([^/]+)\//);
-  const cat = m ? m[1] : "home";
-  $("#backLink").href = (cat === "reviews") ? "reviews.html"
-                   : (cat === "papers") ? "papers.html"
-                   : (cat === "notes") ? "notes.html"
-                   : (cat === "etc") ? "etc.html"
-                   : "index.html";
+  const cat = setActiveNav();
 
-  // fetch md from same origin
+  // back link
+  $("#backLink").href =
+    (cat === "reviews") ? "reviews.html" :
+    (cat === "papers")  ? "papers.html"  :
+    (cat === "notes")   ? "notes.html"   :
+    (cat === "etc")     ? "etc.html"     : "index.html";
+
   const res = await fetch(path, { cache: "no-store" });
   if(!res.ok){
     $("#postTitle").textContent = "불러오기 실패";
@@ -54,6 +61,7 @@ async function main(){
   const title = meta.title || path.split("/").pop();
   const date  = meta.date || "";
   const tags  = meta.tags || "";
+
   $("#postTitle").textContent = title;
   document.title = `${title} | YoungHyuk`;
 
