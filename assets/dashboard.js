@@ -1,17 +1,14 @@
 // assets/dashboard.js
 const $ = (s)=>document.querySelector(s);
 
-// ✅ Encode GitHub contents path safely: keep "/" separators
 function encPath(p){
   return String(p || "").split("/").map(encodeURIComponent).join("/");
 }
 
-// === repo config ===
 const GITHUB_OWNER  = "younghyukkim";
 const GITHUB_REPO   = "younghyukkim.github.io";
 const GITHUB_BRANCH = "main";
 
-// === auth keys (login.html과 동일해야 함) ===
 const TOKEN_KEY = "gh_token_v3";
 const ME_KEY    = "gh_me_v3";
 
@@ -58,7 +55,6 @@ async function ghFetchRaw(path, opts={}){
   return res.text();
 }
 
-// ===== markdown helpers =====
 function parseFrontMatter(md){
   if(!md.startsWith("---")) return { meta:{}, body: md };
   const end = md.indexOf("\n---", 3);
@@ -90,7 +86,6 @@ function buildPostMarkdown(meta, body){
   return fm + (body||"");
 }
 
-// ===== Path rules =====
 function slugify(s){
   return (s||"")
     .trim()
@@ -131,7 +126,6 @@ function showImgStatus(msg, ok=true){
   st.style.color = ok ? "" : "crimson";
 }
 
-// ===== drafts (localStorage) =====
 function saveDraft(){
   const key = getDraftKey();
   const meta = {
@@ -169,7 +163,6 @@ function loadDraft(){
   }
 }
 
-// ===== preview =====
 function updatePreview(){
   const md = $("#md")?.value || "";
   const parsed = parseFrontMatter(md);
@@ -178,7 +171,6 @@ function updatePreview(){
   if(pv) pv.innerHTML = html;
 }
 
-// ===== text insertion helper =====
 function insertAtCursor(textarea, text){
   if(!textarea) return;
   const start = textarea.selectionStart ?? textarea.value.length;
@@ -190,9 +182,7 @@ function insertAtCursor(textarea, text){
   textarea.selectionStart = textarea.selectionEnd = pos;
 }
 
-// ===== github contents helpers =====
 async function getFileSha(path){
-  // 1) ref=브랜치로 시도
   try{
     const data = await ghFetch(
       `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
@@ -200,15 +190,11 @@ async function getFileSha(path){
     if (data?.sha) return data.sha;
   }catch{}
 
-  // 2) ref 없이 시도 (기본 브랜치로 조회)
   try{
-    const data = await ghFetch(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`
-    );
+    const data = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`);
     if (data?.sha) return data.sha;
   }catch{}
 
-  // 3) repo 기본 브랜치 자동 감지 후 그걸로 다시 시도
   try{
     const repo = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}`);
     const def = repo?.default_branch;
@@ -219,11 +205,9 @@ async function getFileSha(path){
       if (data?.sha) return data.sha;
     }
   }catch{}
-
   return null;
 }
 
-// text file put
 async function putFile(path, content, message){
   const sha = await getFileSha(path);
   const body = {
@@ -234,87 +218,46 @@ async function putFile(path, content, message){
   };
   return ghFetch(
     `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`,
-    {
-      method:"PUT",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(body),
-    }
+    { method:"PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) }
   );
 }
 
-// ✅ binary(file) put (이미지 등)
 async function putBinaryFile(path, base64Content, message){
   const sha = await getFileSha(path);
   const body = {
     message,
     branch: GITHUB_BRANCH,
-    content: base64Content, // ⚠️ 이미 base64인 문자열 그대로
+    content: base64Content,
     ...(sha ? { sha } : {})
   };
   return ghFetch(
     `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`,
-    {
-      method:"PUT",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(body),
-    }
+    { method:"PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) }
   );
-}
-
-async function deleteFile(path, message){
-  const sha = await getFileSha(path);
-
-  if(!sha){
-    try{
-      await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`);
-      throw new Error(`파일은 보이는데 sha를 못 가져왔어. 브랜치/권한 문제 가능성: ${path}`);
-    }catch{
-      throw new Error(`삭제 실패: sha를 못 가져왔어(경로/브랜치 확인): ${path}`);
-    }
-  }
-
-  const body = { message, branch: GITHUB_BRANCH, sha };
-
-  return ghFetch(
-    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`,
-    {
-      method:"DELETE",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(body),
-    }
-  );
-}
-
-// ===== posts.json rebuild (index/reviews 목록용) =====
-async function listDir(path){
-  try{
-    const arr = await ghFetch(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
-    );
-    return (arr||[]).filter(x => x.type==="file" && x.name.endsWith(".md"));
-  }catch{
-    return [];
-  }
-}
-
-async function readMetaFromMd(path){
-  const txt = await ghFetchRaw(
-    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
-  );
-  const { meta } = parseFrontMatter(txt);
-  return meta || {};
 }
 
 async function rebuildPostsJson(){
-  const cats = ["Paper-reviews","Implementation","Project"];
+  const cats = ["reviews","papers","notes","etc"];
   const posts = [];
 
   for(const c of cats){
-    const files = await listDir(`content/${c}`);
+    let arr = [];
+    try{
+      arr = await ghFetch(
+        `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(`content/${c}`)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
+      );
+    }catch{}
+    const files = (arr||[]).filter(x=>x.type==="file" && x.name.endsWith(".md"));
+
     for(const f of files){
       const path = `content/${c}/${f.name}`;
       let meta = {};
-      try { meta = await readMetaFromMd(path); } catch {}
+      try{
+        const txt = await ghFetchRaw(
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
+        );
+        meta = parseFrontMatter(txt).meta || {};
+      }catch{}
       posts.push({
         title: meta.title || f.name.replace(/\.md$/,""),
         date: meta.date || "",
@@ -326,11 +269,9 @@ async function rebuildPostsJson(){
   }
 
   posts.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
-  const json = JSON.stringify(posts, null, 2);
-  await putFile("content/posts.json", json, "dashboard: rebuild posts index");
+  await putFile("content/posts.json", JSON.stringify(posts, null, 2), "dashboard: rebuild posts index");
 }
 
-// ===== UI: list posts (option.dataset.sha 저장) =====
 async function loadPostsIndex(){
   const list = $("#postsList");
   if(!list) return;
@@ -341,7 +282,7 @@ async function loadPostsIndex(){
   optLoading.textContent = "(불러오는 중...)";
   list.appendChild(optLoading);
 
-  const cats = ["Paper-review", "Implementation", "Projects"];
+  const cats = ["reviews", "papers", "notes", "etc"];
   const items = [];
 
   for(const cat of cats){
@@ -351,18 +292,13 @@ async function loadPostsIndex(){
       );
       (arr||[]).forEach(it=>{
         if(it && it.type==="file" && it.name.endsWith(".md")){
-          items.push({
-            label: `${cat}/${it.name}`,
-            path: `content/${cat}/${it.name}`,
-            sha: it.sha,
-          });
+          items.push({ label: `${cat}/${it.name}`, path: `content/${cat}/${it.name}`, sha: it.sha });
         }
       });
     }catch{}
   }
 
   list.innerHTML = "";
-
   if(items.length === 0){
     const optEmpty = document.createElement("option");
     optEmpty.value = "";
@@ -391,7 +327,6 @@ async function openPost(path){
   const txt = await ghFetchRaw(
     `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
   );
-
   const { meta } = parseFrontMatter(txt);
 
   const m = path.match(/^content\/([^/]+)\/(.+)\.md$/);
@@ -410,7 +345,6 @@ async function openPost(path){
   showStatus(`열기 완료: ${path}`);
 }
 
-// ===== publish / delete =====
 async function publish(){
   const cat = $("#category")?.value || "reviews";
   const slug = slugify($("#slug")?.value || "");
@@ -460,7 +394,6 @@ async function removeSelected(){
   showStatus("삭제 중...");
 
   try{
-    // ✅ option의 sha 우선 사용
     let sha = (opt?.dataset?.sha || "").trim();
     if(!sha) sha = await getFileSha(path);
     if(!sha) throw new Error(`sha를 못 가져왔어(경로/브랜치 확인): ${path}`);
@@ -469,11 +402,7 @@ async function removeSelected(){
 
     await ghFetch(
       `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`,
-      {
-        method:"DELETE",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(body),
-      }
+      { method:"DELETE", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) }
     );
 
     await rebuildPostsJson();
@@ -484,25 +413,18 @@ async function removeSelected(){
   }
 }
 
-// ===== ✅ image upload =====
+// ===== ✅ 이미지 업로드 & 마크다운 삽입(정상 문법 강제) =====
 function getImageFolder(){
-  // 글 단위로 이미지 폴더 분리: assets/uploads/<category>/<slug>/
   const cat = $("#category")?.value || "reviews";
   const slug = slugify($("#slug")?.value || "untitled");
   return `assets/uploads/${cat}/${slug}`;
 }
 
 function safeFilename(name){
-  // 파일명에 공백/한글/특수문자 들어가도 GitHub 경로로 안전하게
   const dot = name.lastIndexOf(".");
   const base = (dot >= 0) ? name.slice(0, dot) : name;
   const ext  = (dot >= 0) ? name.slice(dot).toLowerCase() : "";
-  const b = base
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\s-]/g,"")
-    .replace(/\s+/g,"-")
-    .replace(/-+/g,"-");
+  const b = base.trim().toLowerCase().replace(/[^\w\s-]/g,"").replace(/\s+/g,"-").replace(/-+/g,"-");
   const ts = new Date().toISOString().replace(/[:.]/g,"-");
   return `${b || "image"}-${ts}${ext || ".png"}`;
 }
@@ -514,11 +436,17 @@ function fileToBase64(file){
       const dataUrl = String(reader.result || "");
       const comma = dataUrl.indexOf(",");
       if(comma < 0) return reject(new Error("base64 변환 실패"));
-      resolve(dataUrl.slice(comma + 1)); // data:image/...;base64,xxxxx 중 xxxxx
+      resolve(dataUrl.slice(comma + 1));
     };
     reader.onerror = ()=> reject(new Error("파일 읽기 실패"));
     reader.readAsDataURL(file);
   });
+}
+
+function mdImageSnippet(alt, relPath){
+  // ✅ 항상 표준 마크다운으로 삽입
+  const safeAlt = (alt || "").replaceAll("]", "\\]");
+  return `\n![${safeAlt}](${relPath})\n`;
 }
 
 async function uploadImagesAndInsert(){
@@ -529,7 +457,6 @@ async function uploadImagesAndInsert(){
     return;
   }
 
-  // slug가 있어야 이미지 폴더가 안정적임
   const slug = slugify($("#slug")?.value || "");
   if(!slug){
     showImgStatus("먼저 slug를 입력해줘! (이미지 폴더를 만들기 위해 필요)", false);
@@ -549,18 +476,49 @@ async function uploadImagesAndInsert(){
 
       await putBinaryFile(path, b64, `dashboard: upload image ${path}`);
 
-      // ✅ 마크다운 커서 위치에 자동 삽입 (상대경로)
-      const rel = path; // 사이트 루트 기준 상대경로
-      const snippet = `\n![${fname}](${rel})\n`;
-      insertAtCursor(mdArea, snippet);
+      // ✅ 커서 위치에 올바른 문법으로 삽입
+      insertAtCursor(mdArea, mdImageSnippet(fname, path));
     }
 
     updatePreview();
-    // 파일 선택 초기화
     input.value = "";
-    showImgStatus(`업로드 완료 ✅ (${files.length}개) — 마크다운에 삽입했어!`);
+    showImgStatus(`업로드 완료 ✅ (${files.length}개) — 마크다운에 정상 삽입했어!`);
   }catch(e){
     showImgStatus(`업로드 실패: ${e.message}`, false);
+  }
+}
+
+// ===== ✅ 깨진 이미지 문법 자동 복구 =====
+// 패턴: "!filename.webp" / "!something.png" 처럼 괄호 없는 토큰을
+// 같은 글 폴더의 assets/uploads/<cat>/<slug>/<filename> 로 바꿔줌.
+function fixBrokenImageMarkdown(){
+  const mdArea = $("#md");
+  if(!mdArea) return;
+
+  const cat = $("#category")?.value || "reviews";
+  const slug = slugify($("#slug")?.value || "untitled");
+  const folder = `assets/uploads/${cat}/${slug}`;
+
+  // 줄 시작/중간 어디든: 공백 앞에 !filename.ext 형태
+  // 단, 이미 ![...](...) 인 정상 문법은 제외
+  let text = mdArea.value;
+
+  // 이미 정상 이미지 문법 제외: ![ ... ]( ... )
+  // 깨진 케이스만: !(공백/대괄호 없이)파일명.(png|jpg|jpeg|gif|webp)
+  const re = /(^|[\s])!(?!\[)([A-Za-z0-9._-]+\.(?:png|jpg|jpeg|gif|webp))(\b)/gi;
+
+  let changed = false;
+  text = text.replace(re, (m, p1, fname) => {
+    changed = true;
+    return `${p1}![](${folder}/${fname})`;
+  });
+
+  if(changed){
+    mdArea.value = text;
+    updatePreview();
+    showImgStatus("깨진 이미지 문법을 자동으로 수정했어 ✅");
+  }else{
+    showImgStatus("수정할 깨진 이미지 문법이 없어 ✅");
   }
 }
 
@@ -596,6 +554,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   if($("#btnDelete")) $("#btnDelete").addEventListener("click", removeSelected);
 
   if($("#btnUploadImg")) $("#btnUploadImg").addEventListener("click", uploadImagesAndInsert);
+  if($("#btnFixImages")) $("#btnFixImages").addEventListener("click", fixBrokenImageMarkdown);
 
   if($("#postsList")){
     $("#postsList").addEventListener("change", async ()=>{
