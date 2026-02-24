@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>논문 리뷰</title>
   <link rel="stylesheet" href="assets/style.css" />
+
+  <!-- (선택) post.html에서 md 렌더링할 때 쓰는 markdown.js는 reviews 목록 페이지에선 꼭 필요하진 않지만,
+       너가 유지하고 싶으면 그대로 둬도 OK -->
   <script defer src="assets/markdown.js"></script>
+
+  <!-- posts.json 기반 리스트 렌더링 -->
   <script defer src="assets/app.js"></script>
 </head>
 <body>
@@ -14,7 +19,7 @@
       <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
       <nav class="nav" id="nav">
         <a href="index.html" data-nav="home">홈</a>
-        <a href="reviews.html" data-nav="reviews">논문 리뷰</a>
+        <a class="active" href="reviews.html" data-nav="reviews">논문 리뷰</a>
         <a href="implementations.html" data-nav="impl">논문 구현</a>
         <a href="projects.html" data-nav="projects">프로젝트</a>
         <a href="contacts.html" data-nav="contacts">연락처</a>
@@ -35,11 +40,14 @@
 
     <footer class="footer">
       <a href="admin.html">관리자</a>
+      <span style="margin:0 10px;">·</span>
+      © <span id="year"></span> YoungHyuk
     </footer>
   </div>
 
   <script>
     window.PAGE_CATEGORY = "reviews";
+    document.getElementById("year").textContent = new Date().getFullYear();
   </script>
 </body>
 </html>
