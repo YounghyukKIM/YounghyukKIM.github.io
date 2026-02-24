@@ -107,6 +107,19 @@ function currentPath(){
   return `content/${cat}/${slug}.md`;
 }
 
+function fixBrokenImagesForRender(body, cat, slug){
+  const folder = `assets/uploads/${cat}/${slug}`;
+
+  // 1) "!filename.ext" (괄호 없는 이미지 토큰) → "![](folder/filename.ext)"
+  // - ![alt](...) 정상 문법은 제외
+  // - 뒤에 문장부호가 붙어도 잡힘
+  const re = /(^|[\s])!(?!\[)([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|gif|webp))(?=\s|$|[)\],.!?])/gi;
+
+  return String(body || "").replace(re, (m, p1, fname) => {
+    return `${p1}![](${folder}/${fname})`;
+  });
+}
+
 function updatePathHint(){
   const el = $("#pathHint");
   if(el) el.textContent = currentPath();
@@ -166,7 +179,13 @@ function loadDraft(){
 function updatePreview(){
   const md = $("#md")?.value || "";
   const parsed = parseFrontMatter(md);
-  const html = window.mdToHtml ? window.mdToHtml(parsed.body) : "";
+
+  const cat  = $("#category")?.value || "reviews";
+  const slug = slugify($("#slug")?.value || "untitled");
+
+  const fixedBody = fixBrokenImagesForRender(parsed.body, cat, slug);
+
+  const html = window.mdToHtml ? window.mdToHtml(fixedBody) : fixedBody;
   const pv = $("#preview");
   if(pv) pv.innerHTML = html;
 }
