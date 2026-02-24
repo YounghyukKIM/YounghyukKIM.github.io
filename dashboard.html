@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dashboard | YoungHyuk</title>
   <link rel="stylesheet" href="assets/style.css" />
-  <!-- 대시보드 로직 -->
-  <script defer src="assets/dashboard.js"></script>
-  <!-- markdown 렌더러 (preview용) -->
+
+  <!-- preview용 markdown renderer -->
   <script defer src="assets/markdown.js"></script>
+  <!-- dashboard logic -->
+  <script defer src="assets/dashboard.js"></script>
 </head>
 <body>
-  <!-- ✅ index.html과 동일한 topbar 스타일 유지 -->
+  <!-- index.html과 동일한 느낌 유지 -->
   <header class="topbar">
     <div class="inner">
       <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
 
-      <!-- ✅ 네비 느낌 유지 (대시보드는 직접 URL 접근용이니까 간단히) -->
       <nav class="nav" id="nav">
         <a href="index.html">홈</a>
         <a href="reviews.html">논문 리뷰</a>
@@ -29,28 +29,27 @@
   </header>
 
   <div class="container">
-    <!-- one-liner intro card (index 느낌 그대로) -->
+    <!-- 헤더 카드 -->
     <div class="card">
       <div class="pad">
         <h1 class="h1" style="margin-bottom:6px">Dashboard</h1>
-        <p class="p" style="margin:0">
-          글 작성 · 임시저장 · 발행(Commit) · 삭제 · 미리보기
-        </p>
-        <div class="small" style="margin-top:8px">
+        <p class="p" style="margin:0">글 작성 · 임시저장 · 발행(Commit) · 삭제 · 미리보기</p>
+
+        <div class="small" style="margin-top:10px">
           <span id="whoami"></span>
           <span id="dashNote" style="margin-left:8px"></span>
         </div>
 
-        <!-- ✅ JS와 id 통일: logoutBtn -->
-        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
           <button id="logoutBtn" class="btn">로그아웃</button>
           <div id="status" class="small"></div>
         </div>
       </div>
     </div>
 
+    <!-- 메인 그리드 -->
     <section class="grid">
-      <!-- LEFT: editor -->
+      <!-- LEFT: Editor -->
       <div class="card col-8">
         <div class="pad">
           <div class="section-title">글 작성</div>
@@ -91,8 +90,12 @@
           <div class="hr"></div>
 
           <div class="small" style="margin:10px 0 6px">Markdown</div>
-          <textarea id="md" class="input" style="min-height:320px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
-            placeholder="Markdown 내용을 입력하세요..."></textarea>
+          <textarea
+            id="md"
+            class="input"
+            style="min-height:340px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+            placeholder="Markdown 내용을 입력하세요..."
+          ></textarea>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
             <button id="btnSaveDraft" class="btn">임시저장</button>
@@ -102,12 +105,12 @@
           </div>
 
           <div class="small" style="margin-top:10px">
-            ※ 발행은 GitHub에 커밋이 생김. (content/{category}/{slug}.md)
+            ※ 발행/삭제 후 <b>content/posts.json</b> 자동 갱신됨 (index/reviews 목록용)
           </div>
         </div>
       </div>
 
-      <!-- RIGHT: preview + list -->
+      <!-- RIGHT: Preview + List -->
       <div class="card col-4">
         <div class="pad">
           <div class="section-title">미리보기</div>
@@ -117,9 +120,8 @@
 
           <div class="section-title">게시글 목록</div>
           <div class="small" style="margin:8px 0">
-            아래에서 글 선택하면 편집기에 불러와짐.
+            선택하면 편집기로 불러와짐.
           </div>
-
           <select id="postsList" class="input" size="10" style="width:100%"></select>
         </div>
       </div>
@@ -131,7 +133,6 @@
   </div>
 
   <script>
-    // index.html 느낌 유지: footer year
     document.getElementById("year").textContent = new Date().getFullYear();
   </script>
 </body>
