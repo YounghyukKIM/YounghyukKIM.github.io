@@ -19,5 +19,12 @@
     "category": "reviews",
     "tags": "AI",
     "path": "content/reviews/this-is-test.md"
+  },
+  {
+    "title": "image-test",
+    "date": "",
+    "category": "reviews",
+    "tags": "",
+    "path": "content/reviews/image-test.md"
   }
 ]
