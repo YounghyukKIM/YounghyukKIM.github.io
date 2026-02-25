@@ -1,16 +1,130 @@
----
-layout: default
-title: 논문 리뷰
----
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>연락처</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html"><span class="dot"></span>YoungHyuk</a>
+      <nav class="nav" id="nav">
+        <a href="index.html" data-nav="home">홈</a>
+        <a href="reviews.html" data-nav="reviews">논문 리뷰</a>
+        <a href="implementations.html" data-nav="impl">논문 구현</a>
+        <a href="projects.html" data-nav="projects">프로젝트</a>
+        <a class="active" href="contacts.html" data-nav="contacts">연락처</a>
+      </nav>
+    </div>
+  </header>
 
-<h2>📑 논문 리뷰 모아보기</h2>
-<ul>
-  {% for post in site.categories['논문리뷰'] %}
-    <li>
-      <span style="color: #666; font-size: 0.9em;">{{ post.date | date: "%Y-%m-%d" }}</span> 
-      <a href="{{ post.url }}" style="text-decoration: none; font-weight: bold; color: #0366d6;">{{ post.title }}</a>
-    </li>
-  {% else %}
-    <p>아직 작성된 논문 리뷰가 없습니다.</p>
-  {% endfor %}
-</ul>
+  <div class="container">
+    <div class="card">
+      <div class="pad">
+        <h1 class="h1" style="margin-bottom:6px">Contacts</h1>
+        <p class="p" style="margin:0">
+          자기소개 · 학사/석사 · 관심 연구 · 연락처를 정리해두는 페이지.
+        </p>
+      </div>
+    </div>
+
+    <section class="grid">
+      <!-- Left: Bio -->
+      <div class="card col-8">
+        <div class="pad">
+          <div class="section-title">자기소개</div>
+          <p class="p" style="margin-top:10px">
+            안녕하세요, <b>YoungHyuk</b>입니다. (여기에 한 줄 소개/연구 키워드/관심 분야를 넣어주세요)
+          </p>
+
+          <div class="hr"></div>
+
+          <div class="section-title">관심 연구</div>
+          <div class="list" style="margin-top:10px">
+            <div class="item">
+              <div style="flex:1">
+                <div style="font-weight:800">AI · Computer Vision</div>
+                <div class="small">예: segmentation, detection, thermal vision</div>
+              </div>
+            </div>
+            <div class="item">
+              <div style="flex:1">
+                <div style="font-weight:800">Robotics · RL · SLAM</div>
+                <div class="small">예: exploration, active SLAM, drone autonomy</div>
+              </div>
+            </div>
+            <div class="item">
+              <div style="flex:1">
+                <div style="font-weight:800">TDA / Representation Learning</div>
+                <div class="small">예: manifold learning, UMAP/Topo, transformers</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Education + Contacts -->
+      <div class="card col-4">
+        <div class="pad">
+          <div class="section-title">학력</div>
+
+          <div class="small" style="margin:8px 0 6px">학사</div>
+          <div class="item" style="margin-bottom:10px">
+            <div style="flex:1">
+              <div style="font-weight:800">[학교/전공]</div>
+              <div class="small">[기간] · [주요 활동/연구]</div>
+            </div>
+          </div>
+
+          <div class="small" style="margin:8px 0 6px">석사</div>
+          <div class="item">
+            <div style="flex:1">
+              <div style="font-weight:800">[학교/전공/연구실]</div>
+              <div class="small">[기간] · [지도교수/키워드]</div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="section-title">연락처</div>
+          <div class="list" style="margin-top:10px">
+            <div class="item">
+              <div style="flex:1">
+                <div style="font-weight:800">Email</div>
+                <div class="small">your@email.com</div>
+              </div>
+            </div>
+            <div class="item">
+              <div style="flex:1">
+                <div style="font-weight:800">GitHub</div>
+                <div class="small">github.com/your-id</div>
+              </div>
+            </div>
+            <div class="item">
+              <div style="flex:1">
+                <div style="font-weight:800">Affiliation</div>
+                <div class="small">DLmath Lab / Korea University (예시)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="small">
+            ※ 연락처는 공개 범위를 고려해서 최소한만 올리는 걸 추천!
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      © <span id="year"></span> YoungHyuk
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
