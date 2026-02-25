@@ -11,6 +11,10 @@ const GITHUB_OWNER = "younghyukkim";
 const GITHUB_REPO = "younghyukkim.github.io";
 const GITHUB_BRANCH = "main";
 
+// ✅ NEW categories (folder names)
+const CATEGORIES = ["Paper-reviews", "Implementation", "Projects"];
+const DEFAULT_CATEGORY = CATEGORIES[0];
+
 // === auth keys ===
 const TOKEN_KEY = "gh_token_v3";
 const ME_KEY = "gh_me_v3";
@@ -82,7 +86,7 @@ function buildPostMarkdown(meta, body) {
     "---",
     `title: ${meta.title || ""}`,
     `date: ${meta.date || new Date().toISOString().slice(0, 10)}`,
-    `category: ${meta.category || "reviews"}`,
+    `category: ${meta.category || DEFAULT_CATEGORY}`,
     `tags: ${meta.tags || ""}`,
     "---",
     "",
@@ -100,14 +104,18 @@ function slugify(s) {
     .replace(/-+/g, "-");
 }
 
+function getCategoryValue() {
+  return $("#category")?.value || DEFAULT_CATEGORY;
+}
+
 function getDraftKey() {
-  const cat = $("#category")?.value || "reviews";
+  const cat = getCategoryValue();
   const slug = slugify($("#slug")?.value || "untitled");
   return `dash_draft_${cat}_${slug}`;
 }
 
 function currentPath() {
-  const cat = $("#category")?.value || "reviews";
+  const cat = getCategoryValue();
   const slug = slugify($("#slug")?.value || "untitled");
   return `content/${cat}/${slug}.md`;
 }
@@ -137,7 +145,7 @@ function saveDraft() {
   const meta = {
     title: $("#title")?.value || "",
     date: $("#date")?.value || "",
-    category: $("#category")?.value || "reviews",
+    category: getCategoryValue(),
     tags: $("#tags")?.value || "",
     slug: $("#slug")?.value || "",
     md: $("#md")?.value || "",
@@ -157,7 +165,7 @@ function loadDraft() {
     const d = JSON.parse(raw);
     if ($("#title")) $("#title").value = d.title || "";
     if ($("#date")) $("#date").value = d.date || "";
-    if ($("#category")) $("#category").value = d.category || "reviews";
+    if ($("#category")) $("#category").value = d.category || DEFAULT_CATEGORY;
     if ($("#tags")) $("#tags").value = d.tags || "";
     if ($("#slug")) $("#slug").value = d.slug || "";
     if ($("#md")) $("#md").value = d.md || "";
@@ -181,30 +189,24 @@ function insertAtCursor(textarea, text) {
   textarea.selectionStart = textarea.selectionEnd = pos;
 }
 
+// ===== preview: fix broken "!image.jpg" for render =====
 function fixBrokenImagesForRender(body, cat, slug) {
   const folder = `assets/uploads/${cat}/${slug}`;
-
-  // ✅ 공백/문장부호/줄 시작 상관없이: "!filename.ext"면 다 잡음
-  // ✅ 정상 이미지 문법 "![alt](...)" 는 제외됨 (!(?!\[))
+  // "!filename.ext" but not "![alt](...)"
   const re = /!(?!\[)([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|gif|webp))/gi;
-
-  return String(body || "").replace(re, (m, fname) => {
-    return `![](${folder}/${fname})`;
-  });
+  return String(body || "").replace(re, (m, fname) => `![image](${folder}/${fname})`);
 }
 
-// ===== preview =====
 function updatePreview() {
   const md = $("#md")?.value || "";
   const parsed = parseFrontMatter(md);
 
-  const cat = $("#category")?.value || "reviews";
+  const cat = getCategoryValue();
   const slug = slugify($("#slug")?.value || "untitled");
 
-  // ✅ show immediately even if md has "!image-....jpg" broken tokens
   const fixedBody = fixBrokenImagesForRender(parsed.body, cat, slug);
-
   const html = window.mdToHtml ? window.mdToHtml(fixedBody) : fixedBody;
+
   const pv = $("#preview");
   if (pv) pv.innerHTML = html;
 }
@@ -217,15 +219,13 @@ async function getFileSha(path) {
       `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
     );
     if (data?.sha) return data.sha;
-  } catch { }
+  } catch {}
 
   // 2) without ref
   try {
-    const data = await ghFetch(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`
-    );
+    const data = await ghFetch(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(path)}`);
     if (data?.sha) return data.sha;
-  } catch { }
+  } catch {}
 
   // 3) default branch discovery
   try {
@@ -237,13 +237,12 @@ async function getFileSha(path) {
       );
       if (data?.sha) return data.sha;
     }
-  } catch { }
+  } catch {}
 
   return null;
 }
 
 async function putFile(path, content, message) {
-  // robust: if update requires sha, we fetch it
   let sha = await getFileSha(path);
 
   const body = (shaVal) => ({
@@ -270,10 +269,7 @@ async function putFile(path, content, message) {
     if (!needSha) throw e;
 
     sha = await getFileSha(path);
-    if (!sha) {
-      // last attempt without ref already in getFileSha; if still none, throw meaningful error
-      throw new Error(`파일 업데이트에 필요한 sha를 못 가져왔어: ${path}`);
-    }
+    if (!sha) throw new Error(`파일 업데이트에 필요한 sha를 못 가져왔어: ${path}`);
     return await doPut(sha);
   }
 }
@@ -296,7 +292,7 @@ async function putBinaryFile(path, base64Content, message) {
   );
 }
 
-// ===== posts.json rebuild =====
+// ===== posts.json rebuild (NEW categories) =====
 async function listDir(path) {
   try {
     const arr = await ghFetch(
@@ -317,15 +313,14 @@ async function readMetaFromMd(path) {
 }
 
 async function rebuildPostsJson() {
-  const cats = ["reviews", "papers", "notes", "etc"];
   const posts = [];
 
-  for (const c of cats) {
+  for (const c of CATEGORIES) {
     const files = await listDir(`content/${c}`);
     for (const f of files) {
       const path = `content/${c}/${f.name}`;
       let meta = {};
-      try { meta = await readMetaFromMd(path); } catch { }
+      try { meta = await readMetaFromMd(path); } catch {}
       posts.push({
         title: meta.title || f.name.replace(/\.md$/, ""),
         date: meta.date || "",
@@ -340,7 +335,7 @@ async function rebuildPostsJson() {
   await putFile("content/posts.json", JSON.stringify(posts, null, 2), "dashboard: rebuild posts index");
 }
 
-// ===== UI: list posts (store sha on option dataset) =====
+// ===== UI: list posts (NEW categories) =====
 async function loadPostsIndex() {
   const list = $("#postsList");
   if (!list) return;
@@ -351,10 +346,9 @@ async function loadPostsIndex() {
   optLoading.textContent = "(불러오는 중...)";
   list.appendChild(optLoading);
 
-  const cats = ["reviews", "papers", "notes", "etc"];
   const items = [];
 
-  for (const cat of cats) {
+  for (const cat of CATEGORIES) {
     try {
       const arr = await ghFetch(
         `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encPath(`content/${cat}`)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
@@ -368,7 +362,7 @@ async function loadPostsIndex() {
           });
         }
       });
-    } catch { }
+    } catch {}
   }
 
   list.innerHTML = "";
@@ -404,8 +398,9 @@ async function openPost(path) {
 
   const { meta } = parseFrontMatter(txt);
 
+  // content/<category>/<slug>.md (category now can be Paper-reviews etc)
   const m = path.match(/^content\/([^/]+)\/(.+)\.md$/);
-  const cat = m ? m[1] : (meta.category || "reviews");
+  const cat = m ? m[1] : (meta.category || DEFAULT_CATEGORY);
   const slug = m ? m[2] : "";
 
   if ($("#category")) $("#category").value = cat;
@@ -416,13 +411,13 @@ async function openPost(path) {
   if ($("#md")) $("#md").value = txt;
 
   updatePathHint();
-  updatePreview(); // ✅ includes render-time broken image fix
+  updatePreview();
   showStatus(`열기 완료: ${path}`);
 }
 
 // ===== publish / delete =====
 async function publish() {
-  const cat = $("#category")?.value || "reviews";
+  const cat = getCategoryValue();
   const slug = slugify($("#slug")?.value || "");
   if (!slug) {
     showStatus("slug를 입력해줘!", false);
@@ -463,7 +458,6 @@ async function removeSelected() {
 
   const opt = list.selectedOptions?.[0];
   const path = (opt?.value || "").trim();
-
   if (!path) {
     showStatus("삭제할 파일을 선택해줘!", false);
     return;
@@ -472,7 +466,7 @@ async function removeSelected() {
   showStatus("삭제 중...");
 
   try {
-    // ✅ prefer sha from list option
+    // prefer sha from list
     let sha = (opt?.dataset?.sha || "").trim();
     if (!sha) sha = await getFileSha(path);
     if (!sha) throw new Error(`sha를 못 가져왔어(경로/브랜치 확인): ${path}`);
@@ -496,9 +490,9 @@ async function removeSelected() {
   }
 }
 
-// ===== image upload =====
+// ===== image upload (folder uses NEW category) =====
 function getImageFolder() {
-  const cat = $("#category")?.value || "reviews";
+  const cat = getCategoryValue();
   const slug = slugify($("#slug")?.value || "untitled");
   return `assets/uploads/${cat}/${slug}`;
 }
@@ -562,8 +556,6 @@ async function uploadImagesAndInsert() {
       const b64 = await fileToBase64(f);
 
       await putBinaryFile(path, b64, `dashboard: upload image ${path}`);
-
-      // ✅ always correct markdown inserted
       insertAtCursor(mdArea, mdImageSnippet(fname, path));
     }
 
@@ -597,8 +589,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  if ($("#category")) $("#category").addEventListener("change", updatePathHint);
-  if ($("#slug")) $("#slug").addEventListener("input", updatePathHint);
+  if ($("#category")) $("#category").addEventListener("change", () => {
+    updatePathHint();
+    updatePreview();
+  });
+  if ($("#slug")) $("#slug").addEventListener("input", () => {
+    updatePathHint();
+    updatePreview();
+  });
   if ($("#md")) $("#md").addEventListener("input", updatePreview);
 
   if ($("#btnSaveDraft")) $("#btnSaveDraft").addEventListener("click", saveDraft);
@@ -617,6 +615,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if ($("#date") && !$("#date").value) {
     $("#date").value = new Date().toISOString().slice(0, 10);
+  }
+
+  // ensure category default exists
+  if ($("#category") && !CATEGORIES.includes($("#category").value)) {
+    $("#category").value = DEFAULT_CATEGORY;
   }
 
   updatePathHint();
